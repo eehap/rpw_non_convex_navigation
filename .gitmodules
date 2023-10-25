@@ -1,0 +1,3 @@
+[submodule "FunMoRo_control"]
+	path = FunMoRo_control
+	url = git@github.com:TUNI-IINES/FunMoRo_control.git
