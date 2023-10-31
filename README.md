@@ -16,7 +16,7 @@
 #### FunMoRo Library
     Initialize submodule in local base .git directory $ git submodule --init
     
-    current bandaid fix for import: on line 5 adjust absolute path to <my_absolute_path>/robotics_project_work/rpw_non_convex_navigation/scripts/python/dd_convex_cbf.py
+    current bandaid fix for import: on line 5 adjust absolute path to <my_absolute_path>/rpw_non_convex_navigation/scripts/python/dd_convex_cbf.py
 
 ### Running Scripts
 
