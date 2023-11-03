@@ -1,13 +1,15 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from cvxopt import solvers, matrix
-from library.visualize_mobile_robot import sim_mobile_robot
+import sys
+sys.path.append('/Users/eehaap/robotics_project_work/rpw_non_convex_navigation')
+from FunMoRo_control.library.visualize_mobile_robot import sim_mobile_robot
 
 # Constants and Settings
 Ts = 0.01 # Update simulation every 10ms
 t_max = 25  # total simulation duration in seconds
 # Set initial state
-init_state = np.array([-2., 0., 0.]) # px, py, theta
+init_state = np.array([-2., 0.5, 0.]) # px, py, theta
 IS_SHOWING_2DVISUALIZATION = True
 
 # Define Field size for plotting (should be in tuple)
@@ -33,37 +35,35 @@ def compute_control_input(desired_state, robot_state, current_time, obstacles):
 
     # Go to goal controller
     beta = 5
-    gamma = 3
+    gamma = 0.1
     k_wz = 2
     goal_threshold = 0.05
 
     err_goal = np.sqrt((x_d - x) ** 2 + (y_d - y) ** 2)
 
     k_g = (0.5 * (1 - np.e ** (-beta * err_goal)) / err_goal)
-    k_s = 2
+    k_s = 0.2
+    k_c
 
     u_gtg_x = k_s * (x_d - x)
     u_gtg_y = k_s * (y_d - y)
 
+    print(f'gtgx {u_gtg_x}')
+    print(f'gtgy {u_gtg_y}')
+
     # QP parameters
     Q = 2 * matrix(np.eye(2))
 
-    h_o1 = (np.linalg.norm([x - obstacles[0][0], y - obstacles[0][1]])) ** 2 - (R_si ** 2)
-    h_o2 = (np.linalg.norm([x - obstacles[1][0], y - obstacles[1][1]])) ** 2 - (R_si ** 2)
-    h_o3 = (np.linalg.norm([x - obstacles[2][0], y - obstacles[2][1]])) ** 2 - (R_si ** 2)
+    h_o1 = (np.linalg.norm([x - 0, y - 0])) ** 2 - (R_si ** 2)
 
-    h_o1_d_x = 2 * (x - obstacles[0][0])
-    h_o2_d_x = 2 * (x - obstacles[1][0])
-    h_o3_d_x = 2 * (x - obstacles[2][0])
-    h_o1_d_y = 2 * (y - obstacles[0][1])
-    h_o2_d_y = 2 * (y - obstacles[1][1])
-    h_o3_d_y = 2 * (y - obstacles[2][1])    
+    print(f'{h_o1}')
 
-    G = matrix([ [-h_o1_d_x, -h_o1_d_y], 
-                 [-h_o2_d_x, -h_o2_d_y],
-                 [-h_o3_d_x, -h_o3_d_y]]).T
+    h_o1_d_x = 2 * (x - 0)
+    h_o1_d_y = 2 * (y - 0)
 
-    h = matrix([ gamma * (h_o1), gamma * (h_o2), gamma * (h_o3) ])
+    G = matrix([-h_o1_d_x, -h_o1_d_y]).T
+
+    h = matrix(gamma * (h_o1 ** 3))
 
     c = matrix([-2 * u_gtg_x, -2 * u_gtg_y])
     
@@ -71,21 +71,19 @@ def compute_control_input(desired_state, robot_state, current_time, obstacles):
     sol = solvers.qp(Q, c, G, h, verbose=False)
 
     u_x = sol['x'][0]
-    u_y = sol['x'][1]
+    u_y = sol['x'][2]
     wz = 0
-    
-    print(f'h: {h} ')
  
 
-    if err_goal < goal_threshold:
-        u_x = 0
-        u_y = 0
-        theta_err = theta_d - theta
-        theta_err = ( (theta_err + np.pi) % (2*np.pi) ) - np.pi
-        wz = k_wz * theta_err
+    # if err_goal < goal_threshold:
+    #     u_x = 0
+    #     u_y = 0
+    #     theta_err = theta_d - theta
+    #     theta_err = ( (theta_err + np.pi) % (2*np.pi) ) - np.pi
+    #     wz = k_wz * theta_err
 
-        if np.abs(theta_err) < goal_threshold:
-            wz = 0
+    #     if np.abs(theta_err) < goal_threshold:
+    #         wz = 0
 
     # initial numpy array for [vx, vy, omega]
     current_input = np.array([0., 0., 0.]) 
@@ -94,18 +92,7 @@ def compute_control_input(desired_state, robot_state, current_time, obstacles):
     current_input[1] = u_y
     current_input[2] = wz
 
-    gtg = np.array([0., 0.])
-    gtg[0] = u_gtg_x
-    gtg[1] = u_gtg_y
-
-    h = np.array([0., 0., 0.])
-    h[0] = h_o1
-    h[1] = h_o2
-    h[2] = h_o3
-    
-    
-
-    return current_input, h, gtg
+    return current_input
 
 
 # MAIN SIMULATION COMPUTATION
@@ -116,13 +103,13 @@ def simulate_control():
     # Initialize robot's state (Single Integrator)
     robot_state = init_state.copy() # numpy array for [px, py, theta]
     desired_state = np.array([2, 0., 0.]) # numpy array for goal / the desired [px, py, theta]
-    obstacles = np.array(([0, 0], [.0, -0], [.0, 0]))
+    obstacles = np.array(([[0, 0]]))
 
     # Store the value that needed for plotting: total step number x data length
     state_history = np.zeros( (sim_iter, len(robot_state)) ) 
     goal_history = np.zeros( (sim_iter, len(desired_state)) ) 
     input_history = np.zeros( (sim_iter, 3) ) # for [vx, vy, omega] vs iteration time
-    h_function_history = np.zeros( (sim_iter, 3))
+    h_function_history = np.zeros( (sim_iter, 1))
     u_gtg_history = np.zeros ( (sim_iter, 2))
 
     if IS_SHOWING_2DVISUALIZATION: # Initialize Plot
@@ -132,10 +119,6 @@ def simulate_control():
         sim_visualizer.show_goal(desired_state)
         sim_visualizer.ax.add_patch(plt.Circle( obstacles[0], 0.3, color='r'))
         sim_visualizer.ax.add_patch(plt.Circle( obstacles[0], R_si, color='r', fill=False))
-        sim_visualizer.ax.add_patch(plt.Circle( obstacles[1], 0.3, color='r'))
-        sim_visualizer.ax.add_patch(plt.Circle( obstacles[1], R_si, color='r', fill=False))
-        sim_visualizer.ax.add_patch(plt.Circle( obstacles[2], 0.3, color='r'))
-        sim_visualizer.ax.add_patch(plt.Circle( obstacles[2], R_si, color='r', fill=False))
 
     for it in range(sim_iter):
         current_time = it*Ts
@@ -145,14 +128,12 @@ def simulate_control():
 
         # COMPUTE CONTROL INPUT
         #------------------------------------------------------------
-        current_input, h, u_gtg  = compute_control_input(desired_state, robot_state, current_time, obstacles)
+        current_input  = compute_control_input(desired_state, robot_state, current_time, obstacles)
         #------------------------------------------------------------
 
         # record the computed input at time-step t
         input_history[it] = current_input
-        h_function_history[it] = h
-        u_gtg_history[it] = u_gtg
-
+  
         if IS_SHOWING_2DVISUALIZATION: # Update Plot
             sim_visualizer.update_time_stamp( current_time )
             sim_visualizer.update_goal( desired_state )
@@ -197,8 +178,6 @@ if __name__ == '__main__':
     fig4 = plt.figure(4)
     ax = plt.gca()
     ax.plot(t, h_function_history[:, 0], label='ho1')
-    ax.plot(t, h_function_history[:, 1], label='ho2')
-    ax.plot(t, h_function_history[:, 2], label='ho3')
     ax.set(xlabel="t [s]", ylabel="h(x) [m^2]")
     plt.legend()
     plt.grid()
