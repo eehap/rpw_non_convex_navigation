@@ -8,14 +8,15 @@ from FunMoRo_control.library.visualize_mobile_robot import sim_mobile_robot
 
 # Constants and Settings
 Ts = 0.01 # Update simulation every 10ms
-t_max = 30.0 # total simulation duration in seconds
+t_max = 25.0 # total simulation duration in seconds
 # Set initial state
-init_state = np.array([1.5, -3.5, np.pi/2]) # px, py, theta
+init_state = np.array([-2., 0., 0.]) # px, py, theta
 IS_SHOWING_2DVISUALIZATION = True
 
 # Define Field size for plotting (should be in tuple)
-field_x = (-4, 4)
-field_y = (-4, 4)
+field_x = (-2.5, 2.5)
+field_y = (-2.5, 2.5)
+R_si = 0.51
 
 # IMPLEMENTATION FOR THE CONTROLLER
 #---------------------------------------------------------------------
@@ -32,50 +33,37 @@ def compute_control_input(desired_state, robot_state, current_time, obstacles):
     theta = robot_state[2]
 
     # Go to goal controller
-    beta = 1
-    gamma = 10
+    beta = 5
+    gamma = 1
+    k_wz = 2
     l = 0.2
+    goal_threshold = 0.05
 
     x += l * np.cos(theta)
     y += l * np.sin(theta)
 
-    y_d += l * np.cos(theta)
-    y_d += l * np.sin(theta)
-
     err_goal = np.sqrt((x_d - x) ** 2 + (y_d - y) ** 2)
 
     k_g = (0.5 * (1 - np.e ** (-beta * err_goal)) / err_goal)
-    k_p = 0.25
+    k_c = 1
 
-    ux_gtg = k_p * (x_d - x)
-    uy_gtg = k_p * (y_d - y)
+    ux_gtg = k_c * (x_d - x)
+    uy_gtg = k_c * (y_d - y)
 
     m_1 = np.array([ [1.0, 0.0], [0.0, 1/l] ])
-    m_2 = np.array([ [np.cos(theta), np.sin(theta)], [-np.sin(theta), np.cos(theta)] ])
+    m_2 = np.array([ [np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)] ]).T
     
     # QP parameters
     Q = 2 * matrix(np.eye(2))
-    x_c = obstacles[0]
-    y_c =  obstacles[1]
 
-    h_o1 = (np.linalg.norm([x - x_c, y - y_c]) ** 4) - np.array([ [x - x_c], [y - y_c] ]).T @ np.array([ [10.0, 0.0], [0.0, -1.0] ]) @ np.array([ [x - x_c], [y - y_c] ])
+    h_o1 = (np.linalg.norm([x - 0, y - 0])) ** 2 - (R_si ** 2)
 
-    # gpt
-    h_o1_d_x = 4 * (x - x_c) ** 3 + 20 * (x - x_c)
-    h_o1_d_y = 4 * (y - y_c) ** 3 + 2 * (y - y_c)
+    h_o1_d_x = 2 * (x - 0)
+    h_o1_d_y = 2 * (y - 0)
 
-    # matlab
-    # h_o1_d_x = 4 * (x - x_c) ** 3 - 20 * x - 20 * x_c
-    # h_o1_d_y = 4 * (y - y_c) ** 3 - 2 * y + 2 * y_c
+    G = matrix([-h_o1_d_x, -h_o1_d_y]).T
 
-    # Hand
-    # h_o1_d_x = 4 * (x - x_c) ** 3 - 20 * x - 20 + 20 * x_c
-    # h_o1_d_y = 4 * (y - y_c) ** 3 - 2 * y + 2 - 2 * y_c
-  
-
-    G = matrix([ [-h_o1_d_x, -h_o1_d_y] ]).T
-
-    h = matrix(gamma * ((h_o1) ** 3))
+    h = matrix(gamma * (h_o1 ** 3))
 
     c = matrix([-2 * ux_gtg, -2 * uy_gtg])
     
@@ -88,14 +76,15 @@ def compute_control_input(desired_state, robot_state, current_time, obstacles):
     uc = m_1 @ m_2 @ np.array([ux, uy]).T
     vx = uc[0]
     wz = uc[1]
- 
+
     # initial numpy array for [ux, uy]
     current_input = np.array([0., 0.]) 
     # Compute the control input
     current_input[0] = vx
     current_input[1] = wz
 
-    return current_input, h
+    return current_input
+
 
 # MAIN SIMULATION COMPUTATION
 #---------------------------------------------------------------------
@@ -104,8 +93,8 @@ def simulate_control():
 
     # Initialize robot's state (Single Integrator)
     robot_state = init_state.copy() # numpy array for [px, py, theta]
-    desired_state = np.array([0., 3.5, np.pi/2]) # numpy array for goal / the desired [px, py, theta]
-    obstacles = np.array(([0.0, 0.0])) # obstacle center point
+    desired_state = np.array([2, 0., 0.]) # numpy array for goal / the desired [px, py, theta]
+    obstacles = np.array(([[0.0, 0.0]])) # obstacle center point
 
 
     # Store the value that needed for plotting: total step number x data length
@@ -121,23 +110,6 @@ def simulate_control():
         sim_visualizer.set_field( field_x, field_y ) # set plot area
         sim_visualizer.show_goal(desired_state)
 
-        # Define the range of x and y values for the plot
-        x = np.linspace(-4, 4, 400)
-        y = np.linspace(-4, 4, 400)
-
-        # Create a grid of (x, y) values
-        X, Y = np.meshgrid(x, y)
-
-        # Define the center of the obstacle
-        x_c = 0.0
-        y_c = 0.0
-
-        # Calculate h_o1 for each (x, y) pair
-        h_o1 = (np.linalg.norm([X - x_c, Y - y_c], axis=0) ** 4) - (X - x_c) * 10 * (X - x_c) - (Y - y_c) * (Y - y_c)
-        sim_visualizer.ax.contourf(X, Y, h_o1, levels=[-1e10, 0], colors='r', alpha=0.2)
-
-        ######################    non-convex shape    ######################
-
 
     for it in range(sim_iter):
         current_time = it*Ts
@@ -147,19 +119,19 @@ def simulate_control():
 
         # COMPUTE CONTROL INPUT
         #------------------------------------------------------------
-        current_input, h = compute_control_input(desired_state, robot_state, current_time, obstacles)
+        current_input = compute_control_input(desired_state, robot_state, current_time, obstacles)
         #------------------------------------------------------------
 
         # record the computed input at time-step t
         input_history[it] = current_input
-        h_function_history[it] = h
-
 
         if IS_SHOWING_2DVISUALIZATION: # Update Plot
             sim_visualizer.update_time_stamp( current_time )
             sim_visualizer.update_goal( desired_state )
             sim_visualizer.update_trajectory( state_history[:it+1] ) # up to the latest data
-            
+            sim_visualizer.ax.add_patch(plt.Circle( obstacles[0], 0.3, color='r'))
+            sim_visualizer.ax.add_patch(plt.Circle( obstacles[0], R_si, color='r', fill=False))
+                
         
         #--------------------------------------------------------------------------------
         # Update new state of the robot at time-step t+1
