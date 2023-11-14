@@ -10,7 +10,7 @@ from FunMoRo_control.library.visualize_mobile_robot import sim_mobile_robot
 Ts = 0.01 # Update simulation every 10ms
 t_max = 30.0 # total simulation duration in seconds
 # Set initial state
-init_state = np.array([1.5, -3.5, np.pi/2]) # px, py, theta
+init_state = np.array([0.5, -3.5, np.pi/2]) # px, py, theta
 IS_SHOWING_2DVISUALIZATION = True
 
 # Define Field size for plotting (should be in tuple)
@@ -33,7 +33,7 @@ def compute_control_input(desired_state, robot_state, current_time, obstacles):
 
     # Go to goal controller
     beta = 1
-    gamma = 10
+    gamma = 1
     l = 0.2
 
     x += l * np.cos(theta)
@@ -59,23 +59,30 @@ def compute_control_input(desired_state, robot_state, current_time, obstacles):
     y_c =  obstacles[1]
 
     h_o1 = (np.linalg.norm([x - x_c, y - y_c]) ** 4) - np.array([ [x - x_c], [y - y_c] ]).T @ np.array([ [10.0, 0.0], [0.0, -1.0] ]) @ np.array([ [x - x_c], [y - y_c] ])
+    print(f'h(x): {h_o1}')
 
     # gpt
-    h_o1_d_x = 4 * (x - x_c) ** 3 + 20 * (x - x_c)
-    h_o1_d_y = 4 * (y - y_c) ** 3 + 2 * (y - y_c)
+    # h_o1_d_x = 4 * (x - x_c) ** 3 + 20 * (x - x_c)
+    # h_o1_d_y = 4 * (y - y_c) ** 3 + 2 * (y - y_c)
 
     # matlab
     # h_o1_d_x = 4 * (x - x_c) ** 3 - 20 * x - 20 * x_c
     # h_o1_d_y = 4 * (y - y_c) ** 3 - 2 * y + 2 * y_c
 
     # Hand
-    # h_o1_d_x = 4 * (x - x_c) ** 3 - 20 * x - 20 + 20 * x_c
-    # h_o1_d_y = 4 * (y - y_c) ** 3 - 2 * y + 2 - 2 * y_c
+    # h_o1_d_x = 4 * np.linalg.norm(x - x_c, y - y_c) ** 3 - 20 * x - 20 + 20 * x_c
+    # h_o1_d_y = 4 * np.linalg.norm(x - x_c, y - y_c) ** 3 - 2 * y + 2 - 2 * y_c
+
+    # Iman
+    h_o1_d_x = 4 * (np.linalg.norm([x - x_c, y - y_c]) ** 2) * (x - x_c) - 20 * x + 20 * x_c
+    h_o1_d_y = 4 * (np.linalg.norm([x - x_c, y - y_c]) ** 2) * (y - y_c) + 2 * y - 2 * y_c
   
 
     G = matrix([ [-h_o1_d_x, -h_o1_d_y] ]).T
 
-    h = matrix(gamma * ((h_o1) ** 3))
+    print(f'G: {G}')
+
+    h = matrix(gamma * ((h_o1) ** 1))
 
     c = matrix([-2 * ux_gtg, -2 * uy_gtg])
     

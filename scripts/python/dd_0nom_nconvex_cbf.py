@@ -10,7 +10,7 @@ from FunMoRo_control.library.visualize_mobile_robot import sim_mobile_robot
 Ts = 0.01 # Update simulation every 10ms
 t_max = 25.0 # total simulation duration in seconds
 # Set initial state
-init_state = np.array([-2., -.5, 0.]) # px, py, theta
+init_state = np.array([-2., 0.8, 0.]) # px, py, theta
 IS_SHOWING_2DVISUALIZATION = True
 
 # Define Field size for plotting (should be in tuple)
@@ -33,26 +33,20 @@ def compute_control_input(desired_state, robot_state, current_time, obstacles):
     theta = robot_state[2]
 
     # Go to goal controller
-    beta = 5
-    gamma = 1
-    k_wz = 2
-    l = 0.2
+    beta = 10
+    gamma = 10
+  
     goal_threshold = 0.05
-
-    x += l * np.cos(theta)
-    y += l * np.sin(theta)
 
     err_goal = np.sqrt((x_d - x) ** 2 + (y_d - y) ** 2)
 
     k_g = (0.5 * (1 - np.e ** (-beta * err_goal)) / err_goal)
-    k_c = 1
+    k_t = 10
+    k_c = 0.7
 
-    ux_gtg = k_c * (x_d - x)
-    uy_gtg = k_c * (y_d - y)
+    vx_gtg = k_c * np.sqrt(((x_d - x) ** 2) + ((y_d - y) ** 2))
+    wz_gtg = k_t * (np.arctan2(y_d - y, x_d - x) - theta)
 
-    m_1 = np.array([ [1.0, 0.0], [0.0, 1/l] ])
-    m_2 = np.array([ [np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)] ]).T
-    
     # QP parameters
     Q = 2 * matrix(np.eye(2))
 
@@ -61,21 +55,17 @@ def compute_control_input(desired_state, robot_state, current_time, obstacles):
     h_o1_d_x = 2 * (x - 0)
     h_o1_d_y = 2 * (y - 0)
 
-    G = matrix([-h_o1_d_x, -h_o1_d_y]).T
+    G = matrix([ [-h_o1_d_x, -h_o1_d_y] ]).T
 
-    h = matrix(gamma * (h_o1 ** 3))
+    h = matrix([ [gamma * (h_o1) ** 3] ])
 
-    c = matrix([-2 * ux_gtg, -2 * uy_gtg])
+    c = matrix([ [-2 * vx_gtg, -2 * wz_gtg] ])
     
     solvers.options['show_progress'] = False
     sol = solvers.qp(Q, c, G, h, verbose=False)
 
-    ux = sol['x'][0]
-    uy = sol['x'][1]
-
-    uc = m_1 @ m_2 @ np.array([ux, uy]).T
-    vx = uc[0]
-    wz = uc[1]
+    vx = sol['x'][0]
+    wz = sol['x'][1]
 
     # initial numpy array for [ux, uy]
     current_input = np.array([0., 0.]) 
@@ -133,7 +123,7 @@ def simulate_control():
             sim_visualizer.ax.add_patch(plt.Circle( obstacles[0], R_si, color='r', fill=False))
                 
         
-        #--------------------------------------------------------------------------------
+        #------------------------+--------------------------------------------------------
         # Update new state of the robot at time-step t+1
         # using discrete-time model of UNICYCLE model
         theta = robot_state[2]
@@ -147,13 +137,13 @@ def simulate_control():
     # End of iterations
     # ---------------------------
     # return the stored value for additional plotting or comparison of parameters
-    return state_history, goal_history, input_history, h_function_history
+    return state_history, goal_history, input_history
 
 
 if __name__ == '__main__':
     
     # Call main computation for robot simulation
-    state_history, goal_history, input_history, h_function_history = simulate_control()
+    state_history, goal_history, input_history = simulate_control()
 
 
     # ADDITIONAL PLOTTING
