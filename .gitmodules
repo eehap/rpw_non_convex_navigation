@@ -1,7 +1,6 @@
 [submodule "FunMoRo_control"]
 	path = FunMoRo_control
 	url = git@github.com:TUNI-IINES/FunMoRo_control.git
-[submodule "rpw_impl"]
-	path = rpw_impl
+[submodule "lidar_obstacle_detection"]
+	path = lidar_obstacle_detection
 	url = git@github.com:Jasikainen/rpw_impl.git
-
