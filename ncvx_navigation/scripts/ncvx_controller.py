@@ -36,7 +36,10 @@ class NonConvexController(Node):
         self.obstacles = np.zeros((N_OBSTACLES, 2), dtype=float)
         self.obst_q_pos_t0 = np.zeros((N_OBSTACLES, 2), dtype=float)
         self.obst_q_r_t0 = np.zeros(N_OBSTACLES, dtype=float)
-
+        
+        self.safe_set_centre = np.zeros((1, 2), dtype=float)
+        self.safe_set_radius = 0.0
+        
         if OBSTACLE_FILE:
             self.parse_obstacles(file_path='/config/obstacles.yaml')
         
@@ -146,6 +149,9 @@ class NonConvexController(Node):
     def parse_obstacles(self, file_path):
         with open(file_path, 'r') as file:
             obstacles = yaml.safe_load(file)
+            self.safe_set_centre = [obstacles['boundary'][0]['x'], obstacles['boundary'][0]['y']]
+            self.safe_set_radius = obstacles['boundary'][0]['r']
+
             for i in range(len(obstacles)):
                 self.obst_q_pos_t0[i][0] = obstacles['obstacles'][i]['x']
                 self.obst_q_pos_t0[i][1] = obstacles['obstacles'][i]['y']

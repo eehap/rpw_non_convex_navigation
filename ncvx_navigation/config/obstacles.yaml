@@ -1,4 +1,8 @@
- obstacles:
+boundary:
+  - x: 0.0
+    y: 0.0
+    r: 3.0 
+obstacles:
   - x: 0.0
     y: 0.0
     r: 0.5
