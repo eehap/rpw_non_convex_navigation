@@ -62,6 +62,6 @@ def calcuate_r(robot_position, obstacle_position):
 
     #print(r)
 
-    #return r   
+    return r   
 
 
