@@ -2,9 +2,9 @@
 # from threading import Thread, Lock
 
 import numpy as np
+import cvxpy as cp
 import yaml
 import matplotlib.pyplot as plt
-from cvxopt import matrix, solvers
 
 import rclpy
 from rclpy.node import Node
@@ -35,29 +35,31 @@ class NonConvexController(Node):
         # Obstacle vars
         self.obstacles = np.zeros((N_OBSTACLES, 2), dtype=float)
         self.obst_q_pos_t0 = np.zeros((N_OBSTACLES, 2), dtype=float)
+<<<<<<< HEAD
         self.obst_q_r_t0 = np.zeros(N_OBSTACLES, dtype=float)
         
         self.safe_set_centre = np.zeros((1, 2), dtype=float)
         self.safe_set_radius = 0.0
         
+=======
+        self.obst_q_r_t0 = np.zeros(N_OBSTACLES + 1, dtype=float)
+
+        self.safe_set_centre = np.zeros((1, 2), dtype=float)        
+
+>>>>>>> 662ba71 (migrated to cvxpy)
         if OBSTACLE_FILE:
             self.parse_obstacles(file_path='/config/obstacles.yaml')
         
         self.obst_q_pos = self.obst_q_pos_t0
         self.obst_q_r = self.obst_q_r_t0
 
-
         # Goal point
         self.x_g = 0.0
         self.y_g = 0.0
 
         # State and robot vars
-        self.x_robot = 0.0
-        self.y_robot = 0.0
-        self.theta_robot = 0.0
-
-        self.qx_robot = 0.0
-        self.qy_robot = 0.0
+        self.x_robot = np.array((1, 3), dtype=float)
+        self.q_robot = np.array((1, 2), dtype=float)
 
         # lookahead
         self.l = 0.06
@@ -71,7 +73,8 @@ class NonConvexController(Node):
         self.dt = 1 / CONTROL_RATE
 
         # Jacobian of diffeomorphic function
-        self.J_Fx = np.zeros((2,2))
+        self.J_Fx = np.zeros((2, 2))
+        self.q_dot = np.array((1, 2), dtype=float)
 
     def control_step(self):
 
@@ -82,37 +85,49 @@ class NonConvexController(Node):
         u_hat_ro = self.Kp * (self.obst_q_r_t0 - self.obst_q_r)
 
         # Compute u_star_q, u_star_ro
-        Q = 2 * matrix(np.eye(N_OBSTACLES))
-        c = matrix([2 * u_hat_q[0], 2 * u_hat_q[1], 2 * self.kappa * u_hat_ro])
+        Q = 2 * np.eye(3)
+        c = np.array([2 * u_hat_q[0], 2 * u_hat_q[1], 2 * self.kappa * u_hat_ro])
 
         # QP constraints
 
         # barrier functions h(x)
-        b = self.gamma * matrix([])
-        
+        b_c1_i = - 2 * (self.obst_q_pos - self.q_robot).T * self.q_dot + self.gamma * ((np.linalg.norm(self.obst_q_pos - self.q_robot) ** 2) - self.obst_q_r[1:] ** 2)
+        b_c1_0 = 2 * (self.safe_set_centre - self.obst_q_pos).T * self.q_dot + self.gamma * (self.obst_q_r[0] ** 2 - (np.linalg.norm(self.safe_set_centre - self.obst_q_pos) ** 2))
+        b_c2 = self.gamma * ((np.linalg.norm(self.obst_q_pos[:-1] - self.obst_q_pos[1:]) ** 2) - (self.obst_q_r[1:-1] - self.obst_q_r[2:]) ** 2)
+        b_c3 = self.gamma * ((self.obst_q_r[0] - self.obst_q_r[1:]) ** 2 - (np.linalg.norm(self.obst_q_pos - self.safe_set_centre) ** 2))   
+
+
         # h(x) derivatives
-        H = matrix([])
+        A_c1_i = np.array([-2 * (self.obst_q_pos - self.q_robot).T, 2 * self.obst_q_r])
+        A_c1_0 = - 2 * self.obst_q_r[0]
+        A_c2 = np.array([-2 * (self.obst_q_pos[:-1] - self.obst_q_pos[1:]).T, 2 * (self.obst_q_pos[:-1] - self.obst_q_pos[1:]).T,
+                          2 * (self.obst_q_r[1:-1]+self.obst_q_r[2:]), 2 * (self.obst_q_r[1:-1]+self.obst_q_r[2:])])
+        A_c3 = np.array([ 2 * (self.obst_q_pos - self.safe_set_centre).T, 2 * (self.obst_q_r[0]) - self.obst_q_r[1:], -2 * (self.obst_q_r[0]) - self.obst_q_r[1:]])
+        
 
-        solvers.options['show_progress'] = False
-        sol = solvers.qp(Q, c, H, b, verbose=False)
+        u_ro = cp.Variable((N_OBSTACLES + 1, 1))
+        u_q = cp.Variable((N_OBSTACLES, 2))
+        problem = cp.Problem(cp.Minimize((np.linalg.norm(u_q - u_hat_q) ** 2 + self.kappa * (np.linalg.norm(u_ro - u_hat_ro) ** 2))), 
+                             [A_c1_i @ np.array([u_q, u_ro[1:]]).T <= b_c1_i,
+                              A_c1_0 @ np.array(u_ro[0]) <= b_c1_0,
+                              A_c2 @ np.array([u_q[:-1], u_q[1:], u_ro[:-1], u_ro[1:]]).T <= b_c2,
+                              A_c3 @ np.array(u_q, u_ro[1:], u_ro[0]).T <= b_c3])
+        problem.solve()
 
-        u_star_qx = sol['x'][0]
-        u_star_qy = sol['x'][1]
-        u_star_r = sol['x'][2]
+        # u_star_qx = sol['x'][0]
+        # u_star_qy = sol['x'][1]
+        # u_star_r = sol['x'][2]
         
         # Update bw obstacle radii and pos
-        self.obst_q_pos[:, 0] += u_star_qx * self.dt
-        self.obst_q_pos[:, 1] += u_star_qy * self.dt
-        self.obst_q_r += u_star_r * self.dt
+        # self.obst_q_pos[:, 0] += u_star_qx * self.dt
+        # self.obst_q_pos[:, 1] += u_star_qy * self.dt
+        # self.obst_q_r += u_star_r * self.dt
 
         # Update J_Fx(step+1) from new positions
 
         # Compute diff J_Fx^(step+1)(-1) / q * q_dot(step)
-
         
         self.publish_cmd
-
-
 
     def publish_cmd(self):
         cmd = Twist()
@@ -150,12 +165,16 @@ class NonConvexController(Node):
         with open(file_path, 'r') as file:
             obstacles = yaml.safe_load(file)
             self.safe_set_centre = [obstacles['boundary'][0]['x'], obstacles['boundary'][0]['y']]
+<<<<<<< HEAD
             self.safe_set_radius = obstacles['boundary'][0]['r']
+=======
+            self.obst_q_r_t0[0] = obstacles['boundary'][0]['r']
+>>>>>>> 662ba71 (migrated to cvxpy)
 
             for i in range(len(obstacles)):
                 self.obst_q_pos_t0[i][0] = obstacles['obstacles'][i]['x']
                 self.obst_q_pos_t0[i][1] = obstacles['obstacles'][i]['y']
-                self.obst_q_r_t0[i] = obstacles['obstacles'][i]['r']
+                self.obst_q_r_t0[i+1] = obstacles['obstacles'][i]['r']
 
 def main():
     rclpy.init()
