@@ -2,7 +2,8 @@ from sympy import *
 import numpy as np
 import matplotlib.pyplot as plt
 
-def star_shape(x_pos,y_pos,semi_major_axis, semi_minor_axis):
+def star_shape(x_pos,y_pos,semi_major_axis=4, semi_minor_axis=2):
+    
     x,y,h,k,r1,r2 = symbols('x y h k r1 r2')
     # Ellipse parameters
     h = x_pos   # x-coordinate of the center
@@ -27,16 +28,13 @@ def star_shape(x_pos,y_pos,semi_major_axis, semi_minor_axis):
     ellips2 = (x_ellips-x_ellips_i).T * A2 * (x_ellips-x_ellips_i)
 
     beta_star = (ellips1[0,0] - r1**2) * (ellips2[0,0]-r2**2)
-    #print(beta_star)
 
-
-    #---FOR PLOTTING---#
     # Convert the expression to a function
     beta_star_y = solve(beta_star,y)
     beta_star_func = lambdify([x], beta_star_y, "numpy")
    
     # Given x-values
-    x_values = np.linspace(-4,4,500)
+    x_values = np.linspace(-a1,a1,500)
 
     # Calculate corresponding y-values
     points = []
@@ -47,6 +45,8 @@ def star_shape(x_pos,y_pos,semi_major_axis, semi_minor_axis):
         #print(f"For x = {x_val}, y = {y_val}")
     points = np.array(points)
 
+    #---FOR PLOTTING---#
+    '''
     plt.scatter(points[:,0], points[:,1])
 
     plt.axhline(0, color='black',linewidth=0.5)
@@ -55,6 +55,8 @@ def star_shape(x_pos,y_pos,semi_major_axis, semi_minor_axis):
     plt.title('Star shape')
     plt.legend()
     plt.show()
+    '''
     #---FOR PLOTTING---#    
 
-    return beta_star
+    return beta_star, points
+
