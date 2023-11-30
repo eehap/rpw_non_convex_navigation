@@ -4,7 +4,7 @@ from math import atan2, cos, sin, sqrt
 from sympy import *
 from cvxopt import solvers, matrix
 #from torch.autograd.functional import jacobian
-from library.visualize_mobile_robot import sim_mobile_robot
+#from library.visualize_mobile_robot import sim_mobile_robot
 
 
 def calculate_r():
@@ -253,10 +253,15 @@ def main():
         J21s = J21.subs({px:x[0], py:x[1], xg1:x_g[0], xg2:x_g[1], r0:rho_i[0], r1:rho_i[1], x1x:xi[0], x1y:xi[1], q0x:q0[0], q0y:q0[1], q1x:qi[0], q1y:qi[1], qgx:q_g[0], qgy:q_g[1]})
         J22s = J22.subs({px:x[0], py:x[1], xg1:x_g[0], xg2:x_g[1], r0:rho_i[0], r1:rho_i[1], x1x:xi[0], x1y:xi[1], q0x:q0[0], q0y:q0[1], q1x:qi[0], q1y:qi[1], qgx:q_g[0], qgy:q_g[1]})
 
-
+        jacobian = np.array([[J11s, J12s], [J21s, J22s]], dtype=float)
+        inv_jacobian = np.linalg.inv( jacobian )
+        x_dot = inv_jacobian @ q_dot
+        
         # 9
+        ux = x_dot[0]
+        uy = x_dot[1]
+        #print(f'ux: {ux}, uy: {uy}')
 
-        # ...
         print("1 round done")
 
 main()
