@@ -4,8 +4,7 @@ from math import atan2, cos, sin, sqrt
 from sympy import *
 from cvxopt import solvers, matrix
 #from torch.autograd.functional import jacobian
-#from library.visualize_mobile_robot import sim_mobile_robot
-
+from library.visualize_mobile_robot import sim_mobile_robot
 
 def calculate_r():
     r = 1.0
@@ -135,6 +134,12 @@ def main():
     Ts = 0.01 # Update simulation every 10ms
     t_max = 12.0 # total simulation duration in seconds
     # Set initial state
+    IS_SHOWING_2DVISUALIZATION = True
+    MAX_ANGULAR_VEL = 2.84
+    MAX_LINEAR_VEL = 0.22
+
+    field_x = (-5, 5)
+    field_y = (-5, 5)
 
     px, py, xg1, xg2, r0, r1, r2, x1x, x1y, x2x, x2y, ri0, ri1, ri2 = symbols('px py xg1 xg2 r0 r1 r2 x1x x1y x2x x2y ri0 ri1 ri2')
     q0x, q0y, q1x, q1y, q2x, q2y = symbols('q0x q0y q1x q1y q2x q2y')
@@ -143,6 +148,7 @@ def main():
     ux = 0.1
     uy = 0.1
     Kp = 1
+    l = 0.06
     Kappa = 1
     gamma = 1
     q_t0 = np.array([0., -3.])
@@ -156,12 +162,14 @@ def main():
     q0 = np.array([0., 0.])
 
     x = q
+    theta_robot = 0.0
+    theta_robot_bw = theta_robot
     xi = np.array([0., 3.])
     qiF = [q0, qi]
     rho_i = [r0value, r]
     obstacleCount = 1
     M = obstacleCount + 1
-    x_g = np.array([3.0, 3.0])
+    x_g = np.array([3.0, 3.0, 0.0])
     q_g = x_g
 
     Jacobian = calculateJacobian(M)
@@ -172,7 +180,26 @@ def main():
     #J = calculateJacobian(Fsym)
     #F = diffeomorphismF(M, x, xi, x_g, rho_i, qiF, q_g)
 
+    if IS_SHOWING_2DVISUALIZATION: # Initialize Plot
+        sim_visualizer = sim_mobile_robot( 'unicycle' ) # Unicycle Icon
+        sim_visualizer.set_field( field_x, field_y ) # set plot area
+        sim_visualizer.show_goal(x_g)
+        sim_visualizer_bw = sim_mobile_robot( 'unicycle' ) # Unicycle Icon
+        sim_visualizer_bw.set_field( field_x, field_y ) # set plot area
+        sim_visualizer_bw.show_goal(q_g)
+        bw_obst = plt.Circle((q_t0), r_t0, fc='r')
+        bw_safe_set = plt.Circle((q0), r0_t0, fc='r')
+        sim_visualizer_bw.ax.add_patch(bw_obst)
+        sim_visualizer_bw.ax.add_patch(bw_safe_set)
+
+    state_history = np.zeros((50, 3))
+    state_history_q = np.zeros((50, 3))
+
+    step = 0
     while t < t_max:
+        state_history[step] = np.array([x[0], x[1], theta_robot])
+        state_history_q[step] = np.array([q[0], q[1], theta_robot_bw])
+
 
         # 4 (INCOMPLETE)
 
@@ -256,12 +283,54 @@ def main():
         jacobian = np.array([[J11s, J12s], [J21s, J22s]], dtype=float)
         inv_jacobian = np.linalg.inv( jacobian )
         x_dot = inv_jacobian @ q_dot
-        
-        # 9
         ux = x_dot[0]
         uy = x_dot[1]
-        #print(f'ux: {ux}, uy: {uy}')
 
-        print("1 round done")
+
+        vx_bw = q_dot[0] * np.cos(theta_robot_bw) + q_dot[1] * np.sin(theta_robot_bw)
+        wz_bw = (- q_dot[0] * np.sin(theta_robot_bw) + q_dot[1] * np.cos(theta_robot_bw)) / l
+
+        vx_bw = min(max(vx_bw, -MAX_LINEAR_VEL), MAX_LINEAR_VEL)
+        wz_bw = min(max(wz_bw, -MAX_ANGULAR_VEL), MAX_ANGULAR_VEL)
+
+        vx = ux * np.cos(theta_robot) + uy * np.sin(theta_robot)
+        wz = (- ux * np.sin(theta_robot) + uy * np.cos(theta_robot)) / l
+
+        # Confine cmd values to upper and lower bounds
+        vx = min(max(vx, -MAX_LINEAR_VEL), MAX_LINEAR_VEL)
+        wz = min(max(wz, -MAX_ANGULAR_VEL), MAX_ANGULAR_VEL)
+
+        control_input = np.array([vx, wz])
+        control_input_bw = np.array([vx_bw, wz_bw])
+        
+        # 9
+        #print(f'ux: {ux}, uy: {uy}')
+        if IS_SHOWING_2DVISUALIZATION: # Update Plot
+            sim_visualizer.update_time_stamp(t)
+            sim_visualizer.update_goal( x_g )
+            sim_visualizer.update_trajectory( state_history[:step+1] ) # up to the latest data
+            sim_visualizer_bw.update_time_stamp(t)
+            sim_visualizer_bw.update_goal( q_g )
+            sim_visualizer_bw.update_trajectory( state_history[:step+1] ) # up to the latest data
+            bw_obst.set_center(qi)
+            bw_obst.set_radius(r)
+            bw_safe_set.set_radius(r0value)
+            plt.pause(0.000001)  
+
+        # Update bw
+        B = np.array([[np.cos(theta_robot_bw), 0], [np.sin(theta_robot_bw), 0], [0, 1]])
+        q_step = Ts*(B @ control_input_bw)
+        q = q + q_step[:1] # will be used in the next iteration
+        # theta_robot_bw = q_step[2]
+        theta_robot_bw = ( (theta_robot_bw  + np.pi) % (2*np.pi) ) - np.pi # ensure theta within [-pi pi]
+        # Update rw
+ 
+        B = np.array([[np.cos(theta_robot), 0], [np.sin(theta_robot), 0], [0, 1]])
+        x_step = Ts*(B @ control_input) # will be used in the next iteration
+        x = x + x_step[:1]
+        # theta_robot = x_step[2]
+        theta_robot = ( (theta_robot + np.pi) % (2*np.pi) ) - np.pi # ensure theta within [-pi pi]
+
+        step += 1
 
 main()
