@@ -23,6 +23,7 @@ MAX_LINEAR_VEL = 0.22
 N_OBSTACLES = 1
 CONTROL_RATE = 50
 OBSTACLE_FILE = True
+DEBUG = True
 
 class NonConvexController(Node):
     def __init__(self):
@@ -37,13 +38,13 @@ class NonConvexController(Node):
         self.goal_sub = self.create_subscription(Float32MultiArray, '/ui/goal', self.new_goal_callback, 10)
 
         # Obstacle vars
-        self.obstacles = np.zeros((N_OBSTACLES, 2), dtype=float)
         self.obst_q_pos_t0 = np.zeros((N_OBSTACLES, 2), dtype=float)
         self.obst_q_r_t0 = np.zeros(N_OBSTACLES + 1, dtype=float)
         self.safe_set_centre = np.zeros((1, 2), dtype=float)        
 
         if OBSTACLE_FILE:
-            self.parse_obstacles(file_path=os.path.join(get_package_share_directory('ncvx_navigation'), 'obstacles.yaml'))
+            if DEBUG: self.parse_obstacles("/home/eehaap/ros_ws/src/rpw_non_convex_navigation/ncvx_navigation/config/obstacles.yaml")
+            else: self.parse_obstacles(file_path=os.path.join(get_package_share_directory('ncvx_navigation'), 'obstacles.yaml'))
         
         self.obst_q_pos = self.obst_q_pos_t0
         self.obst_q_r = self.obst_q_r_t0
@@ -80,8 +81,6 @@ class NonConvexController(Node):
         u_hat_ro = self.Kp * (self.obst_q_r_t0 - self.obst_q_r)
 
         # Compute u_star_q, u_star_ro
-        Q = 2 * np.eye(3)
-        c = np.array([2 * u_hat_q[0], 2 * u_hat_q[1], 2 * self.kappa * u_hat_ro])
 
         # QP constraints
 
@@ -173,7 +172,7 @@ def main():
     controller = NonConvexController()
     callback_thread = SingleThreadedExecutor()
     callback_thread.add_node(controller)
-    callback_thread.spin()
+    # callback_thread.spin()
 
     rate = controller.create_rate(CONTROL_RATE)
     k = 0
