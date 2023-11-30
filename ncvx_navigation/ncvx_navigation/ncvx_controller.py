@@ -1,6 +1,8 @@
 #!/bin/python3
 # from threading import Thread, Lock
 
+import os
+
 import numpy as np
 import cvxpy as cp
 import yaml
@@ -8,8 +10,10 @@ import matplotlib.pyplot as plt
 
 import rclpy
 from rclpy.node import Node
-from rclpy.executors import Executor
+from rclpy.executors import SingleThreadedExecutor
 from rclpy.time import Time
+
+from ament_index_python.packages import get_package_share_directory
 
 from geometry_msgs.msg import Twist, Pose2D
 from std_msgs.msg import Float32MultiArray
@@ -22,15 +26,15 @@ OBSTACLE_FILE = True
 
 class NonConvexController(Node):
     def __init__(self):
-        super.__init__('nonconvex_controller')
+        super().__init__('ncvx_nav_node')
 
         self.tb_index = 0
         self.tb_name = f'tb3_{self.tb_index}'
 
         self.cmd_vel_pub = self.create_publisher(Twist, f'/{self.tb_name}/cmd_vel', 10)
 
-        self.pose_sub = self.create_subscription(Pose2D, f'/{self.tb_name}/pos', 10, self.pose_callback)
-        self.goal_sub = self.create_subscription(Float32MultiArray, '/ui/goal', 10, self.new_goal_callback)
+        self.pose_sub = self.create_subscription(Pose2D, f'/{self.tb_name}/pos', self.pose_callback, 10)
+        self.goal_sub = self.create_subscription(Float32MultiArray, '/ui/goal', self.new_goal_callback, 10)
 
         # Obstacle vars
         self.obstacles = np.zeros((N_OBSTACLES, 2), dtype=float)
@@ -39,7 +43,7 @@ class NonConvexController(Node):
         self.safe_set_centre = np.zeros((1, 2), dtype=float)        
 
         if OBSTACLE_FILE:
-            self.parse_obstacles(file_path='/config/obstacles.yaml')
+            self.parse_obstacles(file_path=os.path.join(get_package_share_directory('ncvx_navigation'), 'obstacles.yaml'))
         
         self.obst_q_pos = self.obst_q_pos_t0
         self.obst_q_r = self.obst_q_r_t0
@@ -155,10 +159,11 @@ class NonConvexController(Node):
     def parse_obstacles(self, file_path):
         with open(file_path, 'r') as file:
             obstacles = yaml.safe_load(file)
+            print(obstacles)
             self.safe_set_centre = [obstacles['boundary'][0]['x'], obstacles['boundary'][0]['y']]
             self.obst_q_r_t0[0] = obstacles['boundary'][0]['r']
 
-            for i in range(len(obstacles)):
+            for i in range(len(obstacles['obstacles'])):
                 self.obst_q_pos_t0[i][0] = obstacles['obstacles'][i]['x']
                 self.obst_q_pos_t0[i][1] = obstacles['obstacles'][i]['y']
                 self.obst_q_r_t0[i+1] = obstacles['obstacles'][i]['r']
@@ -166,7 +171,7 @@ class NonConvexController(Node):
 def main():
     rclpy.init()
     controller = NonConvexController()
-    callback_thread = Executor()
+    callback_thread = SingleThreadedExecutor()
     callback_thread.add_node(controller)
     callback_thread.spin()
 
@@ -175,8 +180,12 @@ def main():
 
     while rclpy.ok():
         k +=1
-        controller.control_step(k)
+        print(f'step: {k}')
+        controller.control_step()
         rate.sleep()
+
+    controller.destroy_node()
+    rclpy.shutdown()
 
 if __name__ == '__main__':
     main()
