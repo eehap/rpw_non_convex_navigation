@@ -101,10 +101,12 @@ def calculateJacobian(M):
     gamma = (sqrt((x[0]-xg[0])**2 + (x[1]-xg[1])**2))**2
     F_list = []
     sigma = []
+    #(np.linalg.norm(x-xi)/(1+beta_i[i]))
     for i in range(0,M):
         sigma_i = (gamma*beta_dash_i[i])/(gamma*beta_dash_i[i]+lam*beta_i[i])
         sigma.append(sigma_i)
-        f = ((sqrt((x[0]-xi[i][0])**2 + (x[1]-xi[i][1])**2))/ri[i])*np.array([cos(theta_i[i]), sin(theta_i[i])]).T
+        #f = ((sqrt((x[0]-xi[i][0])**2 + (x[1]-xi[i][1])**2))/ri[i])*np.array([cos(theta_i[i]), sin(theta_i[i])]).T
+        f = ( (sqrt((x[0]-xi[i][0])**2 + (x[1]-xi[i][1])**2)) / ((sqrt((x[0]-xi[i][0])**2 + (x[1]-xi[i][1])**2))/(1+beta_i[i])) ) * np.array([cos(theta_i[i]), sin(theta_i[i])]).T 
         l = sigma_i*(rho[i]*f+qi[i])
         F_list.append(l)
     sigmag = 1 - sum(sigma)
@@ -150,13 +152,13 @@ def main():
     q = np.array([1.0, 1.0])
     r = r_t0
     r0_t0 = 5.0
-    r0 = r0_t0
+    r0value = r0_t0
     q0 = np.array([0., 0.])
 
     x = q
     xi = np.array([0., 3.])
     qiF = [q0, qi]
-    rho_i = [r0, r]
+    rho_i = [r0value, r]
     obstacleCount = 1
     M = obstacleCount + 1
     x_g = np.array([3.0, 3.0])
@@ -179,29 +181,29 @@ def main():
         #J11s = J11.subs({px:1.0, py:2.0, xg1:1.0, xg2:1.0, r0:10.0, r1:2.0, x1x:0.1, x1y:0.3, x2x:2.1, x2y:1.0, ri0:1.1, ri1:1.1, q01:1.1, q11:1.1, qg1:2.1})
         
         # ri0 ja ri1 !!!
-        J11s = J11.subs({px:x[0], py:x[1], xg1:x_g[0], xg2:x_g[1], r0:rho_i[0], r1:rho_i[1], x1x:xi[0], x1y:xi[1], ri0:1.1, ri1:1.1, q0x:q0[0], q0y:q0[1], q1x:qi[0], q1y:qi[1], qgx:q_g[0], qgy:q_g[1]})
-        J12s = J12.subs({px:x[0], py:x[1], xg1:x_g[0], xg2:x_g[1], r0:rho_i[0], r1:rho_i[1], x1x:xi[0], x1y:xi[1], ri0:1.1, ri1:1.1, q0x:q0[0], q0y:q0[1], q1x:qi[0], q1y:qi[1], qgx:q_g[0], qgy:q_g[1]})
-        J21s = J21.subs({px:x[0], py:x[1], xg1:x_g[0], xg2:x_g[1], r0:rho_i[0], r1:rho_i[1], x1x:xi[0], x1y:xi[1], ri0:1.1, ri1:1.1, q0x:q0[0], q0y:q0[1], q1x:qi[0], q1y:qi[1], qgx:q_g[0], qgy:q_g[1]})
-        J22s = J22.subs({px:x[0], py:x[1], xg1:x_g[0], xg2:x_g[1], r0:rho_i[0], r1:rho_i[1], x1x:xi[0], x1y:xi[1], ri0:1.1, ri1:1.1, q0x:q0[0], q0y:q0[1], q1x:qi[0], q1y:qi[1], qgx:q_g[0], qgy:q_g[1]})
+        J11s = J11.subs({px:x[0], py:x[1], xg1:x_g[0], xg2:x_g[1], r0:rho_i[0], r1:rho_i[1], x1x:xi[0], x1y:xi[1], q0x:q0[0], q0y:q0[1], q1x:qi[0], q1y:qi[1], qgx:q_g[0], qgy:q_g[1]})
+        J12s = J12.subs({px:x[0], py:x[1], xg1:x_g[0], xg2:x_g[1], r0:rho_i[0], r1:rho_i[1], x1x:xi[0], x1y:xi[1], q0x:q0[0], q0y:q0[1], q1x:qi[0], q1y:qi[1], qgx:q_g[0], qgy:q_g[1]})
+        J21s = J21.subs({px:x[0], py:x[1], xg1:x_g[0], xg2:x_g[1], r0:rho_i[0], r1:rho_i[1], x1x:xi[0], x1y:xi[1], q0x:q0[0], q0y:q0[1], q1x:qi[0], q1y:qi[1], qgx:q_g[0], qgy:q_g[1]})
+        J22s = J22.subs({px:x[0], py:x[1], xg1:x_g[0], xg2:x_g[1], r0:rho_i[0], r1:rho_i[1], x1x:xi[0], x1y:xi[1], q0x:q0[0], q0y:q0[1], q1x:qi[0], q1y:qi[1], qgx:q_g[0], qgy:q_g[1]})
         q_dot = np.array([J11s*ux+J12s*uy, J21s*ux+J22s*uy]).T
 
         # 5
 
         u_hat_q = Kp*(q_t0-qi)
         u_hat_r = Kp*(r_t0-r)
-        u_hat_r0 = Kp*(r0_t0-r0)
+        u_hat_r0 = Kp*(r0_t0-r0value)
         u_hat = matrix([u_hat_q[0], u_hat_q[1], u_hat_r, u_hat_r0])
 
         # 6
 
         # C1 + C0
         hi = (np.linalg.norm(qi-q))**2 - r**2
-        h0 = r0**2 - (np.linalg.norm(q0-q))**2
+        h0 = r0value**2 - (np.linalg.norm(q0-q))**2
         AC1 = matrix([[-2*(qi[0]-q[0]), -2*(qi[1]-q[1]), 2*r]]).T
         #print(AC1)
-        AC0 = -2*r0
-        bC1 = -2*(qi-q) @ q_dot + gamma * hi
-        bC0 = 2*(q0-q) @ q_dot + gamma * h0
+        AC0 = -2*r0value
+        bC1 = float(-2*(qi-q) @ q_dot + gamma * hi)
+        bC0 = float(2*(q0-q) @ q_dot + gamma * h0)
 
         # C2
         #hij = np.linalg.norm(qi-qj)**2 - (ri-rj)**2
@@ -209,42 +211,24 @@ def main():
         #bC2 = gamma*hij
 
         # C3
-        hi0 = (r0-r)**2 - np.linalg.norm(qi-q0)**2
-        AC3 = matrix([[2*(qi[0]-q0[0]), 2*(qi[1]-q0[1]), 2*(r0-r), -2*(r0-r)]])
-        bC3 = gamma*hi0
-
-        # TODO
+        hi0 = (r0value-r)**2 - np.linalg.norm(qi-q0)**2
+        AC3 = matrix([[2*(qi[0]-q0[0]), 2*(qi[1]-q0[1]), 2*(r0value-r), -2*(r0value-r)]])
+        bC3 = float(gamma*hi0)
 
         a = matrix([2.0, 2.0, 2*Kappa, 2*Kappa])
         A = np.identity(4)
-        P = a*A
-        print(u_hat.size[1])
+        Q = a*A
         c = matrix([-2*u_hat[0], -2*u_hat[1], -2*u_hat[2], -2*u_hat[3]])
-        print(c)
-
-        #c = 
-        # P = 2*A
-        # A = [1, 0, 0, 0
-        #       0, 1, 0, 0
-        #       0, 0, Kappa, 0
-        #       0, 0, 0, Kappa]
-        # qT = -2*u_hat-T*A
-        # q = -2*A-T*u_hat
-        
-        #c = matrix(0.0, (4, 1))
-
-        #G = matrix([[AC1, matrix(0.0, (AC1.size[0], 2))],
-        #            [matrix(0.0, (1, 3)), AC0, matrix(0.0, (1, 2))],
-        #            [matrix(0.0, (1, 1)), matrix(0.0, (1, 3)), AC3]])
         
         # u = [uqx uqy ur ur0]
         G = matrix([[AC1[0], AC1[1], AC1[2], 0.0],
                     [0.0, 0.0, 0.0, AC0],
-                    [AC3]])
+                    [AC3[0], AC3[1], AC3[2], AC3[3]]])
 
+        print(type(AC1[0]))
         h = matrix([bC1, bC0, bC3]).T
-
-        #sol = solvers.qp(P, c, G, h, verbose=False)
+        solvers.options['show_progress'] = False
+        sol = solvers.qp(Q, c, G, h, verbose=False)
         #uq1 = sol['x'][0]
         #uq2 = sol['x'][1]
         u_star_qx = 0.1
@@ -257,8 +241,8 @@ def main():
         qi[0] += u_star_qx*Ts
         qi[1] += u_star_qy*Ts
         r += u_star_r*Ts
-        r0 += u_star_r0*Ts
-        rho_i = [r0, r]
+        r0value += u_star_r0*Ts
+        rho_i = [r0value, r]
 
         t += Ts
         #print(u_hat_q)
@@ -271,5 +255,6 @@ def main():
         # 9
 
         # ...
+        print("1 round done")
 
 main()
