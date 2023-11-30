@@ -10,32 +10,36 @@ from FunMoRo_control.library.visualize_mobile_robot import sim_mobile_robot
 Ts = 0.01 # Update simulation every 10ms
 t_max = 25.0 # total simulation duration in seconds
 # Set initial state
-init_state = np.array([-2., -.5, 0.]) # px, py, theta
+init_state = np.array([-4., 0.0, 0.0]) # px, py, theta
+desired_state = np.array([2, 0., 0.]) # numpy array for goal / the desired [px, py, theta]
+
+obst = np.array(([[0.0, 0.0]])) # obstacle center point
+obst_bw_pos_t0 = obst.copy()
+obst_bw_r_t0 = np.array([1.0])
+
 IS_SHOWING_2DVISUALIZATION = True
 MAX_ANGULAR_VEL = 2.84
 MAX_LINEAR_VEL = 0.22
 
 # Define Field size for plotting (should be in tuple)
-field_x = (-2.5, 2.5)
-field_y = (-2.5, 2.5)
-R_si = 0.51
+field_x = (-5, 5)
+field_y = (-5, 5)
+
+# Safe set
+safe_set_radius_t0 = 5.0
+safe_set_center = np.array([0.0, 0.0])
+
 
 # IMPLEMENTATION FOR THE CONTROLLER
 #---------------------------------------------------------------------
-def compute_control_input(desired_state, robot_state, current_time, obstacles):
-    # Feel free to adjust the input and output of the function as needed.
-    # And make sure it is reflected inside the loop in simulate_control()
-
+def compute_control_input(desired_state, robot_state, current_time, obst_bw, obst_bw_r, safe_set_r):
     x_d = desired_state[0]
     y_d = desired_state[1]
-    theta_d = desired_state[2]
 
     x_robot = robot_state[0]
     y_robot = robot_state[1]
     theta_robot = robot_state[2]
 
-    # Go to goal controller
-    gamma = 1
     l = 0.06
     goal_threshold = 0.05
 
@@ -43,13 +47,24 @@ def compute_control_input(desired_state, robot_state, current_time, obstacles):
     y_robot += l * np.sin(theta_robot)
 
     err_goal = np.sqrt((x_d - x_robot) ** 2 + (y_d - y_robot) ** 2)
-    k_c = 1
 
+    # QP vars
+    Kappa = 1.0
+    gamma = 1.0
+
+    # Go to goal controller
+    k_c = 1
     ux_gtg = k_c * (x_d - x_robot)
     uy_gtg = k_c * (y_d - y_robot)
     
-    # QP parameters
+    # Obst nominal control
+    Kp = 1.0
+    u_hat_q = Kp*(obst_bw_pos_t0 - obst_bw)
+    u_hat_r = Kp*(obst_bw_r_t0 - obst_bw_r)
+    u_hat_r0 = Kp*(safe_set_radius_t0 - safe_set_r)
+    u_hat = matrix([u_hat_q[0], u_hat_q[1], u_hat_r, u_hat_r0])
 
+     # QP parameters
 
 
     # Robot control (real world)
@@ -61,6 +76,10 @@ def compute_control_input(desired_state, robot_state, current_time, obstacles):
     # Confine cmd values to upper and lower bounds
     vx = min(max(vx, -MAX_LINEAR_VEL), MAX_LINEAR_VEL)
     wz = min(max(wz, -MAX_ANGULAR_VEL), MAX_ANGULAR_VEL)
+
+    if err_goal < goal_threshold:
+        vx = 0
+        wz = 0
 
     # initial numpy array for [ux, uy]
     current_input = np.array([0., 0.]) 
@@ -78,15 +97,14 @@ def simulate_control():
 
     # Initialize robot's state (Single Integrator)
     robot_state = init_state.copy() # numpy array for [px, py, theta]
-    desired_state = np.array([2, 0., 0.]) # numpy array for goal / the desired [px, py, theta]
-    obstacles = np.array(([[0.0, 0.0]])) # obstacle center point
-
-
+    obst_bw_pos = obst_bw_pos_t0.copy()
+    obst_bw_r = obst_bw_r_t0.copy()
+    safe_set_r = safe_set_radius_t0
+    
     # Store the value that needed for plotting: total step number x data length
     state_history = np.zeros( (sim_iter, len(robot_state)) ) 
     goal_history = np.zeros( (sim_iter, len(desired_state)) ) 
     input_history = np.zeros( (sim_iter, 2) ) # for [vlin, omega] vs iteration time
-    h_function_history = np.zeros( (sim_iter, 1))
 
 
     if IS_SHOWING_2DVISUALIZATION: # Initialize Plot
@@ -104,7 +122,7 @@ def simulate_control():
 
         # COMPUTE CONTROL INPUT
         #------------------------------------------------------------
-        current_input = compute_control_input(desired_state, robot_state, current_time, obstacles)
+        current_input = compute_control_input(robot_state, current_time, obst_bw_pos, obst_bw_r, safe_set_r)
         #------------------------------------------------------------
 
         # record the computed input at time-step t
@@ -114,9 +132,6 @@ def simulate_control():
             sim_visualizer.update_time_stamp( current_time )
             sim_visualizer.update_goal( desired_state )
             sim_visualizer.update_trajectory( state_history[:it+1] ) # up to the latest data
-            sim_visualizer.ax.add_patch(plt.Circle( obstacles[0], 0.3, color='r'))
-            sim_visualizer.ax.add_patch(plt.Circle( obstacles[0], R_si, color='r', fill=False))
-                
         
         #--------------------------------------------------------------------------------
         # Update new state of the robot at time-step t+1
@@ -132,13 +147,13 @@ def simulate_control():
     # End of iterations
     # ---------------------------
     # return the stored value for additional plotting or comparison of parameters
-    return state_history, goal_history, input_history, h_function_history
+    return state_history, input_history
 
 
 if __name__ == '__main__':
     
     # Call main computation for robot simulation
-    state_history, goal_history, input_history, h_function_history = simulate_control()
+    state_history, input_history = simulate_control()
 
 
     # ADDITIONAL PLOTTING
