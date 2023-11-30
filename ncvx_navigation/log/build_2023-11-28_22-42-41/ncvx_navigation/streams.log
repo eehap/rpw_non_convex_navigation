@@ -1,0 +1,38 @@
+[2.007s] Invoking command in '/home/eehaap/ros_ws/src/rpw_non_convex_navigation/ncvx_navigation': PYTHONPATH=/home/eehaap/ros_ws/src/rpw_non_convex_navigation/ncvx_navigation/build/ncvx_navigation/prefix_override:/home/eehaap/ros_ws/src/rpw_non_convex_navigation/ncvx_navigation/install/ncvx_navigation/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 setup.py egg_info --egg-base build/ncvx_navigation build --build-base /home/eehaap/ros_ws/src/rpw_non_convex_navigation/ncvx_navigation/build/ncvx_navigation/build install --record /home/eehaap/ros_ws/src/rpw_non_convex_navigation/ncvx_navigation/build/ncvx_navigation/install.log --single-version-externally-managed
+[2.555s] running egg_info
+[2.556s] creating build/ncvx_navigation/ncvx_navigation.egg-info
+[2.559s] writing build/ncvx_navigation/ncvx_navigation.egg-info/PKG-INFO
+[2.560s] writing dependency_links to build/ncvx_navigation/ncvx_navigation.egg-info/dependency_links.txt
+[2.561s] writing entry points to build/ncvx_navigation/ncvx_navigation.egg-info/entry_points.txt
+[2.562s] writing requirements to build/ncvx_navigation/ncvx_navigation.egg-info/requires.txt
+[2.562s] writing top-level names to build/ncvx_navigation/ncvx_navigation.egg-info/top_level.txt
+[2.563s] writing manifest file 'build/ncvx_navigation/ncvx_navigation.egg-info/SOURCES.txt'
+[2.565s] reading manifest file 'build/ncvx_navigation/ncvx_navigation.egg-info/SOURCES.txt'
+[2.568s] writing manifest file 'build/ncvx_navigation/ncvx_navigation.egg-info/SOURCES.txt'
+[2.569s] running build
+[2.569s] running build_py
+[2.570s] creating /home/eehaap/ros_ws/src/rpw_non_convex_navigation/ncvx_navigation/build/ncvx_navigation/build
+[2.570s] creating /home/eehaap/ros_ws/src/rpw_non_convex_navigation/ncvx_navigation/build/ncvx_navigation/build/lib
+[2.571s] creating /home/eehaap/ros_ws/src/rpw_non_convex_navigation/ncvx_navigation/build/ncvx_navigation/build/lib/ncvx_navigation
+[2.571s] copying ncvx_navigation/__init__.py -> /home/eehaap/ros_ws/src/rpw_non_convex_navigation/ncvx_navigation/build/ncvx_navigation/build/lib/ncvx_navigation
+[2.571s] copying ncvx_navigation/ncvx_controller.py -> /home/eehaap/ros_ws/src/rpw_non_convex_navigation/ncvx_navigation/build/ncvx_navigation/build/lib/ncvx_navigation
+[2.572s] running install
+[2.572s] running install_lib
+[2.573s] creating /home/eehaap/ros_ws/src/rpw_non_convex_navigation/ncvx_navigation/install/ncvx_navigation/lib/python3.10/site-packages/ncvx_navigation
+[2.574s] copying /home/eehaap/ros_ws/src/rpw_non_convex_navigation/ncvx_navigation/build/ncvx_navigation/build/lib/ncvx_navigation/__init__.py -> /home/eehaap/ros_ws/src/rpw_non_convex_navigation/ncvx_navigation/install/ncvx_navigation/lib/python3.10/site-packages/ncvx_navigation
+[2.574s] copying /home/eehaap/ros_ws/src/rpw_non_convex_navigation/ncvx_navigation/build/ncvx_navigation/build/lib/ncvx_navigation/ncvx_controller.py -> /home/eehaap/ros_ws/src/rpw_non_convex_navigation/ncvx_navigation/install/ncvx_navigation/lib/python3.10/site-packages/ncvx_navigation
+[2.575s] byte-compiling /home/eehaap/ros_ws/src/rpw_non_convex_navigation/ncvx_navigation/install/ncvx_navigation/lib/python3.10/site-packages/ncvx_navigation/__init__.py to __init__.cpython-310.pyc
+[2.575s] byte-compiling /home/eehaap/ros_ws/src/rpw_non_convex_navigation/ncvx_navigation/install/ncvx_navigation/lib/python3.10/site-packages/ncvx_navigation/ncvx_controller.py to ncvx_controller.cpython-310.pyc
+[2.580s] running install_data
+[2.580s] creating /home/eehaap/ros_ws/src/rpw_non_convex_navigation/ncvx_navigation/install/ncvx_navigation/share/ament_index
+[2.581s] creating /home/eehaap/ros_ws/src/rpw_non_convex_navigation/ncvx_navigation/install/ncvx_navigation/share/ament_index/resource_index
+[2.581s] creating /home/eehaap/ros_ws/src/rpw_non_convex_navigation/ncvx_navigation/install/ncvx_navigation/share/ament_index/resource_index/packages
+[2.581s] copying resource/ncvx_navigation -> /home/eehaap/ros_ws/src/rpw_non_convex_navigation/ncvx_navigation/install/ncvx_navigation/share/ament_index/resource_index/packages
+[2.581s] copying package.xml -> /home/eehaap/ros_ws/src/rpw_non_convex_navigation/ncvx_navigation/install/ncvx_navigation/share/ncvx_navigation
+[2.581s] copying ./config/obstacles.yaml -> /home/eehaap/ros_ws/src/rpw_non_convex_navigation/ncvx_navigation/install/ncvx_navigation/share/ncvx_navigation
+[2.582s] running install_egg_info
+[2.585s] Copying build/ncvx_navigation/ncvx_navigation.egg-info to /home/eehaap/ros_ws/src/rpw_non_convex_navigation/ncvx_navigation/install/ncvx_navigation/lib/python3.10/site-packages/ncvx_navigation-0.0.0-py3.10.egg-info
+[2.588s] running install_scripts
+[2.622s] Installing ncvx_nav_node script to /home/eehaap/ros_ws/src/rpw_non_convex_navigation/ncvx_navigation/install/ncvx_navigation/lib/ncvx_navigation
+[2.622s] writing list of installed files to '/home/eehaap/ros_ws/src/rpw_non_convex_navigation/ncvx_navigation/build/ncvx_navigation/install.log'
+[2.651s] Invoked command in '/home/eehaap/ros_ws/src/rpw_non_convex_navigation/ncvx_navigation' returned '0': PYTHONPATH=/home/eehaap/ros_ws/src/rpw_non_convex_navigation/ncvx_navigation/build/ncvx_navigation/prefix_override:/home/eehaap/ros_ws/src/rpw_non_convex_navigation/ncvx_navigation/install/ncvx_navigation/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 setup.py egg_info --egg-base build/ncvx_navigation build --build-base /home/eehaap/ros_ws/src/rpw_non_convex_navigation/ncvx_navigation/build/ncvx_navigation/build install --record /home/eehaap/ros_ws/src/rpw_non_convex_navigation/ncvx_navigation/build/ncvx_navigation/install.log --single-version-externally-managed
