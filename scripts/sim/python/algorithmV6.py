@@ -5,6 +5,14 @@ from sympy import *
 from cvxopt import solvers, matrix
 #from torch.autograd.functional import jacobian
 from library.visualize_mobile_robot import sim_mobile_robot
+def beta(x,y, xc, yc):
+    a = 1
+    b = 1.1
+    function = ((x-xc-a)**2 + (y-yc)**2)*((x-xc+a)**2 + (y-yc)**2) - b**4
+    return function
+
+def beta0(x, y, r):
+    return x**2 + y**2 - r**2
 
 def calculate_r():
     r = 1.0
@@ -137,6 +145,7 @@ def main():
     IS_SHOWING_2DVISUALIZATION = True
     MAX_ANGULAR_VEL = 2.84
     MAX_LINEAR_VEL = 0.22
+    SIM_RW = True
 
     field_x = (-5, 5)
     field_y = (-5, 5)
@@ -150,12 +159,12 @@ def main():
     Kp = 1
     l = 0.06
     Kappa = 1
-    gamma = 1
-    q_t0 = np.array([0., -3.])
+    gamma = 0.01
+    q_t0 = np.array([0., -0.])
     r_t0 = 1.0
     t = 0.0
     qi = q_t0
-    q = np.array([1.0, 1.0])
+    q = np.array([-2.0, -2.0])
     r = r_t0
     r0_t0 = 5.0
     r0value = r0_t0
@@ -181,19 +190,29 @@ def main():
     #F = diffeomorphismF(M, x, xi, x_g, rho_i, qiF, q_g)
 
     if IS_SHOWING_2DVISUALIZATION: # Initialize Plot
-        sim_visualizer = sim_mobile_robot( 'unicycle' ) # Unicycle Icon
-        sim_visualizer.set_field( field_x, field_y ) # set plot area
-        sim_visualizer.show_goal(x_g)
-        sim_visualizer_bw = sim_mobile_robot( 'unicycle' ) # Unicycle Icon
-        sim_visualizer_bw.set_field( field_x, field_y ) # set plot area
-        sim_visualizer_bw.show_goal(q_g)
-        bw_obst = plt.Circle((q_t0), r_t0, fc='r')
-        bw_safe_set = plt.Circle((q0), r0_t0, fc='r')
-        sim_visualizer_bw.ax.add_patch(bw_obst)
-        sim_visualizer_bw.ax.add_patch(bw_safe_set)
+        if SIM_RW:
+            sim_visualizer = sim_mobile_robot( 'unicycle' ) # Unicycle Icon
+            sim_visualizer.set_field( field_x, field_y ) # set plot area
+            sim_visualizer.show_goal(x_g)
+            x_values = np.linspace(-5, 5, 100)
+            y_values = np.linspace(-5, 5, 100)
+            x_mesh, y_mesh = np.meshgrid(x_values, y_values)
+            xc1 = q_t0[0]
+            yc1 = q_t0[1]
+            beta_values = beta(x_mesh, y_mesh, xc1, yc1)
+            sim_visualizer.ax.contour(x_mesh, y_mesh, beta_values, levels=[0], colors='r')
 
-    state_history = np.zeros((50, 3))
-    state_history_q = np.zeros((50, 3))
+        else:
+            sim_visualizer_bw = sim_mobile_robot( 'unicycle') # Unicycle Icon
+            sim_visualizer_bw.set_field( field_x, field_y ) # set plot area
+            sim_visualizer_bw.show_goal(q_g)
+            bw_obst = plt.Circle((q_t0), r_t0, color='r', fill=False)
+            bw_safe_set = plt.Circle((q0), r0_t0, color='b', fill=False)
+            sim_visualizer_bw.ax.add_patch(bw_obst)
+            sim_visualizer_bw.ax.add_patch(bw_safe_set)
+
+    state_history = np.zeros((1000, 3))
+    state_history_q = np.zeros((1000, 3))
 
     step = 0
     while t < t_max:
@@ -306,29 +325,31 @@ def main():
         # 9
         #print(f'ux: {ux}, uy: {uy}')
         if IS_SHOWING_2DVISUALIZATION: # Update Plot
-            sim_visualizer.update_time_stamp(t)
-            sim_visualizer.update_goal( x_g )
-            sim_visualizer.update_trajectory( state_history[:step+1] ) # up to the latest data
-            sim_visualizer_bw.update_time_stamp(t)
-            sim_visualizer_bw.update_goal( q_g )
-            sim_visualizer_bw.update_trajectory( state_history[:step+1] ) # up to the latest data
-            bw_obst.set_center(qi)
-            bw_obst.set_radius(r)
-            bw_safe_set.set_radius(r0value)
+            if SIM_RW:
+                sim_visualizer.update_time_stamp(t)
+                sim_visualizer.update_goal( x_g )
+                sim_visualizer.update_trajectory( state_history[:step+1] ) # up to the latest data
+            else:
+                sim_visualizer_bw.update_time_stamp(t)
+                sim_visualizer_bw.update_goal( q_g )
+                sim_visualizer_bw.update_trajectory( state_history_q[:step+1] ) # up to the latest data
+                bw_obst.set_center(qi)
+                bw_obst.set_radius(r)
+                bw_safe_set.set_radius(r0value)
             plt.pause(0.000001)  
 
         # Update bw
         B = np.array([[np.cos(theta_robot_bw), 0], [np.sin(theta_robot_bw), 0], [0, 1]])
         q_step = Ts*(B @ control_input_bw)
         q = q + q_step[:1] # will be used in the next iteration
-        # theta_robot_bw = q_step[2]
+        theta_robot_bw = float(q_step[2])
         theta_robot_bw = ( (theta_robot_bw  + np.pi) % (2*np.pi) ) - np.pi # ensure theta within [-pi pi]
         # Update rw
  
         B = np.array([[np.cos(theta_robot), 0], [np.sin(theta_robot), 0], [0, 1]])
         x_step = Ts*(B @ control_input) # will be used in the next iteration
         x = x + x_step[:1]
-        # theta_robot = x_step[2]
+        theta_robot = float(x_step[2])
         theta_robot = ( (theta_robot + np.pi) % (2*np.pi) ) - np.pi # ensure theta within [-pi pi]
 
         step += 1
