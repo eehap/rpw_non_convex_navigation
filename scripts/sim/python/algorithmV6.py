@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from math import atan2, cos, sin, sqrt
 from sympy import *
 from cvxopt import solvers, matrix
+import time
 #from torch.autograd.functional import jacobian
 from library.visualize_mobile_robot import sim_mobile_robot
 def beta(x,y, xc, yc):
@@ -129,7 +130,7 @@ def calculateJacobian(M):
     J12 = diff(F[0],py)
     J21 = diff(F[1],px)
     J22 = diff(F[1],py)
-    J11*J12
+    # J11*J12
     #J = matrix([J11, J12])
     #Jacobian = matrix([[diff(F[i], px) for i in range(0,1)],
     #                   [diff(F[i], py) for i in range(0,1)]])
@@ -146,9 +147,10 @@ def main():
     MAX_ANGULAR_VEL = 2.84
     MAX_LINEAR_VEL = 0.22
     SIM_RW = True
+    OMNI = True
 
-    field_x = (-5, 5)
-    field_y = (-5, 5)
+    field_x = (-2.5, 2.5)
+    field_y = (-2.5, 2.5)
 
     px, py, xg1, xg2, r0, r1, r2, x1x, x1y, x2x, x2y, ri0, ri1, ri2 = symbols('px py xg1 xg2 r0 r1 r2 x1x x1y x2x x2y ri0 ri1 ri2')
     q0x, q0y, q1x, q1y, q2x, q2y = symbols('q0x q0y q1x q1y q2x q2y')
@@ -159,12 +161,12 @@ def main():
     Kp = 1
     l = 0.06
     Kappa = 1
-    gamma = 0.01
+    gamma = 0.1
     q_t0 = np.array([0., -0.])
     r_t0 = 1.0
     t = 0.0
     qi = q_t0
-    q = np.array([-2.0, -2.0])
+    q = np.array([-2, -2])
     r = r_t0
     r0_t0 = 5.0
     r0value = r0_t0
@@ -178,7 +180,7 @@ def main():
     rho_i = [r0value, r]
     obstacleCount = 1
     M = obstacleCount + 1
-    x_g = np.array([3.0, 3.0, 0.0])
+    x_g = np.array([2, 2, 0.0])
     q_g = x_g
 
     Jacobian = calculateJacobian(M)
@@ -191,7 +193,10 @@ def main():
 
     if IS_SHOWING_2DVISUALIZATION: # Initialize Plot
         if SIM_RW:
-            sim_visualizer = sim_mobile_robot( 'unicycle' ) # Unicycle Icon
+            if OMNI: 
+                sim_visualizer = sim_mobile_robot( 'omni' )
+            else: 
+                sim_visualizer = sim_mobile_robot( 'unicycle' )
             sim_visualizer.set_field( field_x, field_y ) # set plot area
             sim_visualizer.show_goal(x_g)
             x_values = np.linspace(-5, 5, 100)
@@ -203,7 +208,10 @@ def main():
             sim_visualizer.ax.contour(x_mesh, y_mesh, beta_values, levels=[0], colors='r')
 
         else:
-            sim_visualizer_bw = sim_mobile_robot( 'unicycle') # Unicycle Icon
+            if OMNI:
+                sim_visualizer_bw = sim_mobile_robot( 'omni' )
+            else: 
+                sim_visualizer_bw = sim_mobile_robot( 'unicycle' )
             sim_visualizer_bw.set_field( field_x, field_y ) # set plot area
             sim_visualizer_bw.show_goal(q_g)
             bw_obst = plt.Circle((q_t0), r_t0, color='r', fill=False)
@@ -211,14 +219,13 @@ def main():
             sim_visualizer_bw.ax.add_patch(bw_obst)
             sim_visualizer_bw.ax.add_patch(bw_safe_set)
 
-    state_history = np.zeros((1000, 3))
-    state_history_q = np.zeros((1000, 3))
+    state_history = np.zeros((1000, 2))
+    state_history_q = np.zeros((1000, 2))
 
     step = 0
     while t < t_max:
-        state_history[step] = np.array([x[0], x[1], theta_robot])
-        state_history_q[step] = np.array([q[0], q[1], theta_robot_bw])
-
+        state_history[step] = x
+        state_history_q[step] = q
 
         # 4 (INCOMPLETE)
 
@@ -227,11 +234,13 @@ def main():
         #J11s = J11.subs({px:1.0, py:2.0, xg1:1.0, xg2:1.0, r0:10.0, r1:2.0, x1x:0.1, x1y:0.3, x2x:2.1, x2y:1.0, ri0:1.1, ri1:1.1, q01:1.1, q11:1.1, qg1:2.1})
         
         # ri0 ja ri1 !!!
+        q_dot_elapsed = time.perf_counter()
         J11s = J11.subs({px:x[0], py:x[1], xg1:x_g[0], xg2:x_g[1], r0:rho_i[0], r1:rho_i[1], x1x:xi[0], x1y:xi[1], q0x:q0[0], q0y:q0[1], q1x:qi[0], q1y:qi[1], qgx:q_g[0], qgy:q_g[1]})
         J12s = J12.subs({px:x[0], py:x[1], xg1:x_g[0], xg2:x_g[1], r0:rho_i[0], r1:rho_i[1], x1x:xi[0], x1y:xi[1], q0x:q0[0], q0y:q0[1], q1x:qi[0], q1y:qi[1], qgx:q_g[0], qgy:q_g[1]})
         J21s = J21.subs({px:x[0], py:x[1], xg1:x_g[0], xg2:x_g[1], r0:rho_i[0], r1:rho_i[1], x1x:xi[0], x1y:xi[1], q0x:q0[0], q0y:q0[1], q1x:qi[0], q1y:qi[1], qgx:q_g[0], qgy:q_g[1]})
         J22s = J22.subs({px:x[0], py:x[1], xg1:x_g[0], xg2:x_g[1], r0:rho_i[0], r1:rho_i[1], x1x:xi[0], x1y:xi[1], q0x:q0[0], q0y:q0[1], q1x:qi[0], q1y:qi[1], qgx:q_g[0], qgy:q_g[1]})
         q_dot = np.array([J11s*ux+J12s*uy, J21s*ux+J22s*uy]).T
+        print(f'Time elapsed step 4 (jacobian substitution -> q_dot): {time.perf_counter() - q_dot_elapsed}')
 
         # 5
 
@@ -242,6 +251,10 @@ def main():
 
         # 6
 
+        print(f'qi: {qi}')
+        print(f'q: {q}')
+
+        qp_constraints_elapsed = time.perf_counter()
         # C1 + C0
         hi = (np.linalg.norm(qi-q))**2 - r**2
         h0 = r0value**2 - (np.linalg.norm(q0-q))**2
@@ -274,6 +287,10 @@ def main():
                     [AC3[0], AC3[1], AC3[2], AC3[3]]]).T
 
         h = matrix([bC1, bC0, bC3])
+        
+        print(f'Time elapsed step 6.1 (QP constraint formulation): {time.perf_counter() - qp_constraints_elapsed}')
+        qp_computation_elapsed = time.perf_counter()
+
         solvers.options['show_progress'] = False
         sol = solvers.qp(Q, c, G, h, verbose=False)
 
@@ -281,6 +298,9 @@ def main():
         u_star_qy = sol['x'][1]
         u_star_r = sol['x'][2]
         u_star_r0 = sol['x'][3]
+
+        print(f'Time elapsed step 6.2 (QP Solve): {time.perf_counter() - qp_computation_elapsed}')
+
 
         # 7
         
@@ -293,34 +313,43 @@ def main():
         t += Ts
 
         # 8
+        jacobian_substitution_elapsed = time.perf_counter()
 
         J11s = J11.subs({px:x[0], py:x[1], xg1:x_g[0], xg2:x_g[1], r0:rho_i[0], r1:rho_i[1], x1x:xi[0], x1y:xi[1], q0x:q0[0], q0y:q0[1], q1x:qi[0], q1y:qi[1], qgx:q_g[0], qgy:q_g[1]})
         J12s = J12.subs({px:x[0], py:x[1], xg1:x_g[0], xg2:x_g[1], r0:rho_i[0], r1:rho_i[1], x1x:xi[0], x1y:xi[1], q0x:q0[0], q0y:q0[1], q1x:qi[0], q1y:qi[1], qgx:q_g[0], qgy:q_g[1]})
         J21s = J21.subs({px:x[0], py:x[1], xg1:x_g[0], xg2:x_g[1], r0:rho_i[0], r1:rho_i[1], x1x:xi[0], x1y:xi[1], q0x:q0[0], q0y:q0[1], q1x:qi[0], q1y:qi[1], qgx:q_g[0], qgy:q_g[1]})
         J22s = J22.subs({px:x[0], py:x[1], xg1:x_g[0], xg2:x_g[1], r0:rho_i[0], r1:rho_i[1], x1x:xi[0], x1y:xi[1], q0x:q0[0], q0y:q0[1], q1x:qi[0], q1y:qi[1], qgx:q_g[0], qgy:q_g[1]})
+        print(f'Time elapsed step 8 (Jacobian substitution): {time.perf_counter() - jacobian_substitution_elapsed }')
+
+        inverse_calculation_elapsed = time.perf_counter()
 
         jacobian = np.array([[J11s, J12s], [J21s, J22s]], dtype=float)
         inv_jacobian = np.linalg.inv( jacobian )
         x_dot = inv_jacobian @ q_dot
+        print(f'Time elapsed step 8 (Inverse and matrix multiplication): {time.perf_counter() - inverse_calculation_elapsed}')
+
         ux = x_dot[0]
         uy = x_dot[1]
+        if OMNI:
+            control_input = np.array([x_dot[0], x_dot[1]])
+            control_input_bw = np.array([q_dot[0], q_dot[1]])
 
+        else:
+            vx_bw = q_dot[0] * np.cos(theta_robot_bw) + q_dot[1] * np.sin(theta_robot_bw)
+            wz_bw = (- q_dot[0] * np.sin(theta_robot_bw) + q_dot[1] * np.cos(theta_robot_bw)) / l
 
-        vx_bw = q_dot[0] * np.cos(theta_robot_bw) + q_dot[1] * np.sin(theta_robot_bw)
-        wz_bw = (- q_dot[0] * np.sin(theta_robot_bw) + q_dot[1] * np.cos(theta_robot_bw)) / l
+            vx_bw = min(max(vx_bw, -MAX_LINEAR_VEL), MAX_LINEAR_VEL)
+            wz_bw = min(max(wz_bw, -MAX_ANGULAR_VEL), MAX_ANGULAR_VEL)
 
-        vx_bw = min(max(vx_bw, -MAX_LINEAR_VEL), MAX_LINEAR_VEL)
-        wz_bw = min(max(wz_bw, -MAX_ANGULAR_VEL), MAX_ANGULAR_VEL)
+            vx = ux * np.cos(theta_robot) + uy * np.sin(theta_robot)
+            wz = (- ux * np.sin(theta_robot) + uy * np.cos(theta_robot)) / l
 
-        vx = ux * np.cos(theta_robot) + uy * np.sin(theta_robot)
-        wz = (- ux * np.sin(theta_robot) + uy * np.cos(theta_robot)) / l
+            # Confine cmd values to upper and lower bounds
+            vx = min(max(vx, -MAX_LINEAR_VEL), MAX_LINEAR_VEL)
+            wz = min(max(wz, -MAX_ANGULAR_VEL), MAX_ANGULAR_VEL)
 
-        # Confine cmd values to upper and lower bounds
-        vx = min(max(vx, -MAX_LINEAR_VEL), MAX_LINEAR_VEL)
-        wz = min(max(wz, -MAX_ANGULAR_VEL), MAX_ANGULAR_VEL)
-
-        control_input = np.array([vx, wz])
-        control_input_bw = np.array([vx_bw, wz_bw])
+            control_input = np.array([vx, wz])
+            control_input_bw = np.array([vx_bw, wz_bw])
         
         # 9
         #print(f'ux: {ux}, uy: {uy}')
@@ -339,18 +368,25 @@ def main():
             plt.pause(0.000001)  
 
         # Update bw
-        B = np.array([[np.cos(theta_robot_bw), 0], [np.sin(theta_robot_bw), 0], [0, 1]])
-        q_step = Ts*(B @ control_input_bw)
-        q = q + q_step[:1] # will be used in the next iteration
-        theta_robot_bw = float(q_step[2])
-        theta_robot_bw = ( (theta_robot_bw  + np.pi) % (2*np.pi) ) - np.pi # ensure theta within [-pi pi]
+        if OMNI:
+            x = x + Ts*control_input
+            q = q + Ts*control_input_bw
+            x = x.astype(np.float64)
+            q = q.astype(np.float64)
+    
+        else:
+            B = np.array([[np.cos(theta_robot_bw), 0], [np.sin(theta_robot_bw), 0], [0, 1]])
+            q_step = Ts*(B @ control_input_bw)
+            q = q + q_step[:1] # will be used in the next iteration
+            theta_robot_bw = float(q_step[2])
+            theta_robot_bw = ( (theta_robot_bw  + np.pi) % (2*np.pi) ) - np.pi # ensure theta within [-pi pi]
         # Update rw
  
-        B = np.array([[np.cos(theta_robot), 0], [np.sin(theta_robot), 0], [0, 1]])
-        x_step = Ts*(B @ control_input) # will be used in the next iteration
-        x = x + x_step[:1]
-        theta_robot = float(x_step[2])
-        theta_robot = ( (theta_robot + np.pi) % (2*np.pi) ) - np.pi # ensure theta within [-pi pi]
+            B = np.array([[np.cos(theta_robot), 0], [np.sin(theta_robot), 0], [0, 1]])
+            x_step = Ts*(B @ control_input) # will be used in the next iteration
+            x = x + x_step[:1]
+            theta_robot = float(x_step[2])
+            theta_robot = ( (theta_robot + np.pi) % (2*np.pi) ) - np.pi # ensure theta within [-pi pi]
 
         step += 1
 
