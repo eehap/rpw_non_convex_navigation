@@ -140,13 +140,14 @@ def calculateJacobian(M):
 
 def main():
     # Constants and Settings
-    Ts = 0.01 # Update simulation every 10ms
-    t_max = 12.0 # total simulation duration in seconds
+    Ts = .1 # Update simulation every 10ms
+    t_max = 120.0 # total simulation duration in seconds
     # Set initial state
     IS_SHOWING_2DVISUALIZATION = True
     MAX_ANGULAR_VEL = 2.84
-    MAX_LINEAR_VEL = 0.22
+    MAX_LINEAR_VEL = 0.5
     SIM_RW = True
+    SIM_BOTH_WORLDS = True
     OMNI = True
 
     field_x = (-2.5, 2.5)
@@ -161,12 +162,12 @@ def main():
     Kp = 1
     l = 0.06
     Kappa = 1
-    gamma = 0.1
+    gamma = 100
     q_t0 = np.array([0., -0.])
     r_t0 = 1.0
     t = 0.0
     qi = q_t0
-    q = np.array([-2, -2])
+    q = np.array([-2, -1.0])
     r = r_t0
     r0_t0 = 5.0
     r0value = r0_t0
@@ -194,7 +195,7 @@ def main():
     if IS_SHOWING_2DVISUALIZATION: # Initialize Plot
         if SIM_RW:
             if OMNI: 
-                sim_visualizer = sim_mobile_robot( 'omni' )
+                sim_visualizer = sim_mobile_robot( 'omnidirectional', 1 )
             else: 
                 sim_visualizer = sim_mobile_robot( 'unicycle' )
             sim_visualizer.set_field( field_x, field_y ) # set plot area
@@ -207,9 +208,9 @@ def main():
             beta_values = beta(x_mesh, y_mesh, xc1, yc1)
             sim_visualizer.ax.contour(x_mesh, y_mesh, beta_values, levels=[0], colors='r')
 
-        else:
+        if SIM_BOTH_WORLDS:
             if OMNI:
-                sim_visualizer_bw = sim_mobile_robot( 'omni' )
+                sim_visualizer_bw = sim_mobile_robot( 'omnidirectional', 2 )
             else: 
                 sim_visualizer_bw = sim_mobile_robot( 'unicycle' )
             sim_visualizer_bw.set_field( field_x, field_y ) # set plot area
@@ -239,8 +240,8 @@ def main():
         J12s = J12.subs({px:x[0], py:x[1], xg1:x_g[0], xg2:x_g[1], r0:rho_i[0], r1:rho_i[1], x1x:xi[0], x1y:xi[1], q0x:q0[0], q0y:q0[1], q1x:qi[0], q1y:qi[1], qgx:q_g[0], qgy:q_g[1]})
         J21s = J21.subs({px:x[0], py:x[1], xg1:x_g[0], xg2:x_g[1], r0:rho_i[0], r1:rho_i[1], x1x:xi[0], x1y:xi[1], q0x:q0[0], q0y:q0[1], q1x:qi[0], q1y:qi[1], qgx:q_g[0], qgy:q_g[1]})
         J22s = J22.subs({px:x[0], py:x[1], xg1:x_g[0], xg2:x_g[1], r0:rho_i[0], r1:rho_i[1], x1x:xi[0], x1y:xi[1], q0x:q0[0], q0y:q0[1], q1x:qi[0], q1y:qi[1], qgx:q_g[0], qgy:q_g[1]})
+        print(f'Time elapsed step 4 (jacobian substitution): {time.perf_counter() - q_dot_elapsed}')
         q_dot = np.array([J11s*ux+J12s*uy, J21s*ux+J22s*uy]).T
-        print(f'Time elapsed step 4 (jacobian substitution -> q_dot): {time.perf_counter() - q_dot_elapsed}')
 
         # 5
 
@@ -251,10 +252,6 @@ def main():
 
         # 6
 
-        print(f'qi: {qi}')
-        print(f'q: {q}')
-
-        qp_constraints_elapsed = time.perf_counter()
         # C1 + C0
         hi = (np.linalg.norm(qi-q))**2 - r**2
         h0 = r0value**2 - (np.linalg.norm(q0-q))**2
@@ -288,9 +285,6 @@ def main():
 
         h = matrix([bC1, bC0, bC3])
         
-        print(f'Time elapsed step 6.1 (QP constraint formulation): {time.perf_counter() - qp_constraints_elapsed}')
-        qp_computation_elapsed = time.perf_counter()
-
         solvers.options['show_progress'] = False
         sol = solvers.qp(Q, c, G, h, verbose=False)
 
@@ -298,8 +292,6 @@ def main():
         u_star_qy = sol['x'][1]
         u_star_r = sol['x'][2]
         u_star_r0 = sol['x'][3]
-
-        print(f'Time elapsed step 6.2 (QP Solve): {time.perf_counter() - qp_computation_elapsed}')
 
 
         # 7
@@ -321,18 +313,20 @@ def main():
         J22s = J22.subs({px:x[0], py:x[1], xg1:x_g[0], xg2:x_g[1], r0:rho_i[0], r1:rho_i[1], x1x:xi[0], x1y:xi[1], q0x:q0[0], q0y:q0[1], q1x:qi[0], q1y:qi[1], qgx:q_g[0], qgy:q_g[1]})
         print(f'Time elapsed step 8 (Jacobian substitution): {time.perf_counter() - jacobian_substitution_elapsed }')
 
-        inverse_calculation_elapsed = time.perf_counter()
-
         jacobian = np.array([[J11s, J12s], [J21s, J22s]], dtype=float)
         inv_jacobian = np.linalg.inv( jacobian )
         x_dot = inv_jacobian @ q_dot
-        print(f'Time elapsed step 8 (Inverse and matrix multiplication): {time.perf_counter() - inverse_calculation_elapsed}')
 
         ux = x_dot[0]
         uy = x_dot[1]
         if OMNI:
             control_input = np.array([x_dot[0], x_dot[1]])
             control_input_bw = np.array([q_dot[0], q_dot[1]])
+            control_input[0] = min(max(control_input[0], -MAX_LINEAR_VEL), MAX_LINEAR_VEL)
+            control_input[1] = min(max(control_input[1], -MAX_LINEAR_VEL), MAX_LINEAR_VEL)
+            control_input_bw[0] = min(max(control_input_bw[0], -MAX_LINEAR_VEL), MAX_LINEAR_VEL)
+            control_input_bw[1] = min(max(control_input_bw[1], -MAX_LINEAR_VEL), MAX_LINEAR_VEL)
+
 
         else:
             vx_bw = q_dot[0] * np.cos(theta_robot_bw) + q_dot[1] * np.sin(theta_robot_bw)
@@ -352,13 +346,12 @@ def main():
             control_input_bw = np.array([vx_bw, wz_bw])
         
         # 9
-        #print(f'ux: {ux}, uy: {uy}')
         if IS_SHOWING_2DVISUALIZATION: # Update Plot
             if SIM_RW:
                 sim_visualizer.update_time_stamp(t)
                 sim_visualizer.update_goal( x_g )
                 sim_visualizer.update_trajectory( state_history[:step+1] ) # up to the latest data
-            else:
+            if SIM_BOTH_WORLDS:
                 sim_visualizer_bw.update_time_stamp(t)
                 sim_visualizer_bw.update_goal( q_g )
                 sim_visualizer_bw.update_trajectory( state_history_q[:step+1] ) # up to the latest data
