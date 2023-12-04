@@ -6,9 +6,9 @@ class sim_mobile_robot: # Visualizer on 2D plot
 
     # INITIALIZATION, run only once in the beginning
     #-----------------------------------------------------------------
-    def __init__(self, mode = None):
+    def __init__(self, mode = None, fig_n=1):
         # Generate the simulation window and plot initial objects
-        self.fig = plt.figure(1)
+        self.fig = plt.figure(fig_n)
         self.ax = plt.gca()
         self.ax.set(xlabel="x [m]", ylabel="y [m]")
         self.ax.set_aspect('equal', adjustable='box', anchor='C')
@@ -41,7 +41,7 @@ class sim_mobile_robot: # Visualizer on 2D plot
         arrow_size = 0.2
         ar_d = [arrow_size*np.cos(goal_state[2]), arrow_size*np.sin(goal_state[2])]
         self.pl_goal = plt.quiver( goal_state[0], goal_state[1], ar_d[0], ar_d[1], 
-            scale_units='xy', scale=1, color='r', width=0.1*arrow_size)
+            scale_units='xy' , scale=1, color='r', width=0.1*arrow_size)
 
 
     # PLOT UPDATES, run in every iterations
@@ -78,7 +78,7 @@ class sim_mobile_robot: # Visualizer on 2D plot
         # Extract data for plotting
         px = robot_state[0]
         py = robot_state[1]
-        th = robot_state[2]
+        th  = 0.0
         # Basic size parameter
         scale = 2
         body_rad = 0.08 * scale # m
