@@ -21,7 +21,7 @@ def calculate_r():
 
 
 def calculate_theta(x, xi):
-    theta = atan2(x[0]-xi[0], x[1]-xi[1])
+    theta = atan2(x[1]-xi[1], x[0]-xi[0])
     return theta
 
 
@@ -73,6 +73,7 @@ def calculateJacobian(M):
     qgx, qgy = symbols('qgx qgy')
     r = symbols('r0:{}'.format(M))
     r = Matrix(r)
+    circle_obst_r = 1.0
     #for i in range(0,M):
     #    print(r[i])
     rvalues = [10.0, 2.0, 2.5]
@@ -93,12 +94,12 @@ def calculateJacobian(M):
         xi = [np.array([0., 0.]), np.array([x1x, x1y]), np.array([x2x, x2y])]
     theta_i = []
     for i in range(0,M):
-        theta_i.append(atan2(x[0]-xi[i][0],x[1]-xi[i][1]))
+        theta_i.append(atan2(x[1]-xi[i][1], x[0]-xi[i][0]))
     beta_i = []
     beta0 = (x[0]-xi[0][0])**2 + (x[1]-xi[0][1])**2 - r0**2
     beta_i.append(beta0)
     for i in range(1,M):
-        beta_i.append(((x[0]-xi[i][0]-a)**2 + (x[1]-xi[i][1])**2)*((x[0]-xi[i][0]+a)**2 + (x[1]-xi[i][1])**2) - b**4)
+        beta_i.append((x[0]-xi[0][0])**2 + (x[1]-xi[0][1])**2 - circle_obst_r**2)
     beta_dash_i = {}
     for i in range(0,M):
         p = []
@@ -114,7 +115,7 @@ def calculateJacobian(M):
         sigma_i = (gamma*beta_dash_i[i])/(gamma*beta_dash_i[i]+lam*beta_i[i])
         sigma.append(sigma_i)
         #f = ((sqrt((x[0]-xi[i][0])**2 + (x[1]-xi[i][1])**2))/ri[i])*np.array([cos(theta_i[i]), sin(theta_i[i])]).T
-        f = ( (sqrt((x[0]-xi[i][0])**2 + (x[1]-xi[i][1])**2)) / ((sqrt((x[0]-xi[i][0])**2 + (x[1]-xi[i][1])**2))/(1+beta_i[i])) ) * np.array([cos(theta_i[i]), sin(theta_i[i])]).T 
+        f = ( (sqrt((x[0]-xi[i][0])**2 + (x[1]-xi[i][1])**2)) / circle_obst_r) * np.array([cos(theta_i[i]), sin(theta_i[i])]).T 
         l = sigma_i*(rho[i]*f+qi[i])
         F_list.append(l)
     sigmag = 1 - sum(sigma)
@@ -161,7 +162,7 @@ def main():
     l = 0.06
     Kappa = 1
     gamma = 100
-    q_t0 = np.array([0., -0.])
+    q_t0 = np.array([0., 0])
     r_t0 = 1.0
     t = 0.0
     qi = q_t0
@@ -174,7 +175,7 @@ def main():
     x = q
     theta_robot = 0.0
     theta_robot_bw = theta_robot
-    xi = np.array([0., 3.])
+    xi = qi
     qiF = [q0, qi]
     rho_i = [r0value, r]
     obstacleCount = 1
@@ -183,10 +184,8 @@ def main():
     q_g = x_g
 
 
-    # ux = Kp * (x_g[0] - x[0])
-    # uy = Kp * (x_g[1] - x[1])
-    ux = -0.01
-    uy = -0.01
+    ux = Kp * (x_g[0] - x[0])
+    uy = Kp * (x_g[1] - x[1])
 
     Jacobian = calculateJacobian(M)
     J11 = Jacobian[0]   # dF1/dx
@@ -215,7 +214,8 @@ def main():
             xc1 = q_t0[0]
             yc1 = q_t0[1]
             beta_values = beta(x_mesh, y_mesh, xc1, yc1)
-            sim_visualizer.ax.contour(x_mesh, y_mesh, beta_values, levels=[0], colors='r')
+            # sim_visualizer.ax.contour(x_mesh, y_mesh, beta_values, levels=[0], colors='r')
+            sim_visualizer.ax.add_patch(plt.Circle(([xi[0], xi[1]]), 1.0))
 
         if SIM_BOTH_WORLDS:
             if OMNI:
@@ -248,7 +248,13 @@ def main():
         J12s = J12s_lambd(x[0], x[1], x_g[0], x_g[1], rho_i[0], rho_i[1], xi[0], xi[1], q0[0], q0[1], qi[0], qi[1], q_g[0], q_g[1])
         J21s = J21s_lambd(x[0], x[1], x_g[0], x_g[1], rho_i[0], rho_i[1], xi[0], xi[1], q0[0], q0[1], qi[0], qi[1], q_g[0], q_g[1])
         J22s = J22s_lambd(x[0], x[1], x_g[0], x_g[1], rho_i[0], rho_i[1], xi[0], xi[1], q0[0], q0[1], qi[0], qi[1], q_g[0], q_g[1])
-        
+
+        ux = Kp * (x_g[0] - x[0])
+        uy = Kp * (x_g[1] - x[1])
+        ux = min(max(ux, -MAX_LINEAR_VEL), MAX_LINEAR_VEL)
+        uy = min(max(uy, -MAX_LINEAR_VEL), MAX_LINEAR_VEL)
+
+
         q_dot = np.array([J11s*ux+J12s*uy, J21s*ux+J22s*uy]).T
 
         # 5
@@ -283,14 +289,14 @@ def main():
                     [0.0, 2.0, 0.0, 0.0],
                     [0.0, 0.0, 2.0*Kappa, 0.0],
                     [0.0, 0.0, 0.0, 2.0*Kappa]])
-        
+                
         c = matrix([-2*u_hat[0], -2*u_hat[1], -2*u_hat[2], -2*u_hat[3]])
-        
+
         # u = [uqx uqy ur ur0]
         G = matrix([[AC1[0], AC1[1], AC1[2], 0.0],
                     [0.0, 0.0, 0.0, AC0],
                     [AC3[0], AC3[1], AC3[2], AC3[3]]]).T
-
+        
         h = matrix([bC1, bC0, bC3])
         
         solvers.options['show_progress'] = False
@@ -321,6 +327,7 @@ def main():
 
         jacobian = np.array([[J11s, J12s], [J21s, J22s]], dtype=float)
         inv_jacobian = np.linalg.inv( jacobian )
+
         x_dot = inv_jacobian @ q_dot
 
         ux = x_dot[0]
@@ -328,8 +335,8 @@ def main():
 
         print(f'ux:  {ux}')
         print(f'uy:  {uy}')
-        print(f'qx:  {q_dot[0]}')
-        print(f'qy:  {q_dot[1]}')
+        print(f'q_dotx:  {q_dot[0]}')
+        print(f'q_doty:  {q_dot[1]}')
 
 
 
