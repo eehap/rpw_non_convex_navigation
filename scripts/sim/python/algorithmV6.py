@@ -189,6 +189,11 @@ def main():
     J12 = Jacobian[1]   # dF1/dy
     J21 = Jacobian[2]   # dF2/dx
     J22 = Jacobian[3]   # dF2/dy
+    J11s_lambd = lambdify([px, py, xg1, xg2, r0, r1, x1x, x1y, q0x, q0y, q1x, q1y, qgx, qgy], J11, "numpy")
+    J12s_lambd = lambdify([px, py, xg1, xg2, r0, r1, x1x, x1y, q0x, q0y, q1x, q1y, qgx, qgy], J12, "numpy")
+    J21s_lambd = lambdify([px, py, xg1, xg2, r0, r1, x1x, x1y, q0x, q0y, q1x, q1y, qgx, qgy], J21, "numpy")
+    J22s_lambd = lambdify([px, py, xg1, xg2, r0, r1, x1x, x1y, q0x, q0y, q1x, q1y, qgx, qgy], J22, "numpy")
+
     #J = calculateJacobian(Fsym)
     #F = diffeomorphismF(M, x, xi, x_g, rho_i, qiF, q_g)
 
@@ -236,10 +241,11 @@ def main():
         
         # ri0 ja ri1 !!!
         q_dot_elapsed = time.perf_counter()
-        J11s = J11.subs({px:x[0], py:x[1], xg1:x_g[0], xg2:x_g[1], r0:rho_i[0], r1:rho_i[1], x1x:xi[0], x1y:xi[1], q0x:q0[0], q0y:q0[1], q1x:qi[0], q1y:qi[1], qgx:q_g[0], qgy:q_g[1]})
-        J12s = J12.subs({px:x[0], py:x[1], xg1:x_g[0], xg2:x_g[1], r0:rho_i[0], r1:rho_i[1], x1x:xi[0], x1y:xi[1], q0x:q0[0], q0y:q0[1], q1x:qi[0], q1y:qi[1], qgx:q_g[0], qgy:q_g[1]})
-        J21s = J21.subs({px:x[0], py:x[1], xg1:x_g[0], xg2:x_g[1], r0:rho_i[0], r1:rho_i[1], x1x:xi[0], x1y:xi[1], q0x:q0[0], q0y:q0[1], q1x:qi[0], q1y:qi[1], qgx:q_g[0], qgy:q_g[1]})
-        J22s = J22.subs({px:x[0], py:x[1], xg1:x_g[0], xg2:x_g[1], r0:rho_i[0], r1:rho_i[1], x1x:xi[0], x1y:xi[1], q0x:q0[0], q0y:q0[1], q1x:qi[0], q1y:qi[1], qgx:q_g[0], qgy:q_g[1]})
+        J11s = J11s_lambd(x[0], x[1], x_g[0], x_g[1], rho_i[0], rho_i[1], xi[0], xi[1], q0[0], q0[1], qi[0], qi[1], q_g[0], q_g[1])
+        J12s = J12s_lambd(x[0], x[1], x_g[0], x_g[1], rho_i[0], rho_i[1], xi[0], xi[1], q0[0], q0[1], qi[0], qi[1], q_g[0], q_g[1])
+        J21s = J21s_lambd(x[0], x[1], x_g[0], x_g[1], rho_i[0], rho_i[1], xi[0], xi[1], q0[0], q0[1], qi[0], qi[1], q_g[0], q_g[1])
+        J22s = J22s_lambd(x[0], x[1], x_g[0], x_g[1], rho_i[0], rho_i[1], xi[0], xi[1], q0[0], q0[1], qi[0], qi[1], q_g[0], q_g[1])
+        
         print(f'Time elapsed step 4 (jacobian substitution): {time.perf_counter() - q_dot_elapsed}')
         q_dot = np.array([J11s*ux+J12s*uy, J21s*ux+J22s*uy]).T
 
@@ -307,10 +313,11 @@ def main():
         # 8
         jacobian_substitution_elapsed = time.perf_counter()
 
-        J11s = J11.subs({px:x[0], py:x[1], xg1:x_g[0], xg2:x_g[1], r0:rho_i[0], r1:rho_i[1], x1x:xi[0], x1y:xi[1], q0x:q0[0], q0y:q0[1], q1x:qi[0], q1y:qi[1], qgx:q_g[0], qgy:q_g[1]})
-        J12s = J12.subs({px:x[0], py:x[1], xg1:x_g[0], xg2:x_g[1], r0:rho_i[0], r1:rho_i[1], x1x:xi[0], x1y:xi[1], q0x:q0[0], q0y:q0[1], q1x:qi[0], q1y:qi[1], qgx:q_g[0], qgy:q_g[1]})
-        J21s = J21.subs({px:x[0], py:x[1], xg1:x_g[0], xg2:x_g[1], r0:rho_i[0], r1:rho_i[1], x1x:xi[0], x1y:xi[1], q0x:q0[0], q0y:q0[1], q1x:qi[0], q1y:qi[1], qgx:q_g[0], qgy:q_g[1]})
-        J22s = J22.subs({px:x[0], py:x[1], xg1:x_g[0], xg2:x_g[1], r0:rho_i[0], r1:rho_i[1], x1x:xi[0], x1y:xi[1], q0x:q0[0], q0y:q0[1], q1x:qi[0], q1y:qi[1], qgx:q_g[0], qgy:q_g[1]})
+        J11s = J11s_lambd(x[0], x[1], x_g[0], x_g[1], rho_i[0], rho_i[1], xi[0], xi[1], q0[0], q0[1], qi[0], qi[1], q_g[0], q_g[1])
+        J12s = J12s_lambd(x[0], x[1], x_g[0], x_g[1], rho_i[0], rho_i[1], xi[0], xi[1], q0[0], q0[1], qi[0], qi[1], q_g[0], q_g[1])
+        J21s = J21s_lambd(x[0], x[1], x_g[0], x_g[1], rho_i[0], rho_i[1], xi[0], xi[1], q0[0], q0[1], qi[0], qi[1], q_g[0], q_g[1])
+        J22s = J22s_lambd(x[0], x[1], x_g[0], x_g[1], rho_i[0], rho_i[1], xi[0], xi[1], q0[0], q0[1], qi[0], qi[1], q_g[0], q_g[1])
+        
         print(f'Time elapsed step 8 (Jacobian substitution): {time.perf_counter() - jacobian_substitution_elapsed }')
 
         jacobian = np.array([[J11s, J12s], [J21s, J22s]], dtype=float)
