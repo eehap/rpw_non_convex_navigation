@@ -18,28 +18,28 @@ def diffeomorphismF(M, x, xi, x_g, rho_i, qi, q_g):
     F_list = []
 
     beta_i = []
-    beta_i.append((x[0]-xi[0][0])**2 + (x[1]-xi[0][1])**2 - rho_i[0]**2)
+    beta_i.append(rho_i[0]**2 - np.linalg.norm(x-x[0])**2)
     for i in range(1,M):
-        beta_i.append(((x[0]-xi[i][0]-a)**2 + (x[1]-xi[i][1])**2)*((x[0]-xi[i][0]+a)**2 + (x[1]-xi[i][1])**2) - b**4)
+        beta_i.append(np.linalg.norm(x-x[i])**2 - rho_i[i]**2)
+        #beta_i.append(((x[0]-xi[i][0]-a)**2 + (x[1]-xi[i][1])**2)*((x[0]-xi[i][0]+a)**2 + (x[1]-xi[i][1])**2) - b**4)
     
     beta_dash_i = {}
-    if len(beta_i) > 1:
-        for i in range(0,M):
-            p = []
-            for j in range(0,M):
-                if i != j:
-                    p.append(beta_i[j])
-            beta_dash_i[i] = np.prod(p)
-    else:
-        beta_dash_i[0] = 0.0
+    for i in range(0,M):
+        p = []
+        for j in range(0,M):
+            if i != j:
+                p.append(beta_i[j])
+        beta_dash_i[i] = np.prod(p)
+
 
     sigma = 0.0
     for i in range(0,M):
         sigma_i = (gamma*beta_dash_i[i])/(gamma*beta_dash_i[i]+lam*beta_i[i])
         sigma += sigma_i
         theta = calculate_theta(x,xi[i])
-        ri = calculate_r()
-        fi = (np.linalg.norm(x-xi)/ri)*np.array([np.cos(theta), np.sin(theta)])
+        #ri = calculate_r()
+        ri = rho_i[i]
+        fi = (np.linalg.norm(x-xi[i])/ri)*np.array([np.cos(theta), np.sin(theta)])
         l = sigma_i*(rho_i[i]*fi+qi[i])
         #print(sigma_i, " ", rho_i[i], " ", fi, " ", qi[i])
         #print(l)
