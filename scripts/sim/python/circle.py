@@ -96,7 +96,7 @@ def calculateJacobian(M):
     for i in range(0,M):
         theta_i.append(atan2(x[1]-xi[i][1], x[0]-xi[i][0]))
     beta_i = []
-    beta0 = (x[0]-xi[0][0])**2 + (x[1]-xi[0][1])**2 - r0**2
+    beta0 = r0**2 - (x[0]-xi[0][0])**2 + (x[1]-xi[0][1])**2
     beta_i.append(beta0)
     for i in range(1,M):
         beta_i.append((x[0]-xi[0][0])**2 + (x[1]-xi[0][1])**2 - circle_obst_r**2)
@@ -115,7 +115,7 @@ def calculateJacobian(M):
         sigma_i = (gamma*beta_dash_i[i])/(gamma*beta_dash_i[i]+lam*beta_i[i])
         sigma.append(sigma_i)
         #f = ((sqrt((x[0]-xi[i][0])**2 + (x[1]-xi[i][1])**2))/ri[i])*np.array([cos(theta_i[i]), sin(theta_i[i])]).T
-        f = ( (sqrt((x[0]-xi[i][0])**2 + (x[1]-xi[i][1])**2)) / circle_obst_r) * np.array([cos(theta_i[i]), sin(theta_i[i])]).T 
+        f = (1 / circle_obst_r) * (x - xi[i])
         l = sigma_i*(rho[i]*f+qi[i])
         F_list.append(l)
     sigmag = 1 - sum(sigma)
@@ -161,7 +161,7 @@ def main():
     Kp = 1
     l = 0.06
     Kappa = 1
-    gamma = 100
+    gamma = 1
     q_t0 = np.array([0., 0])
     r_t0 = 1.0
     t = 0.0
@@ -371,6 +371,7 @@ def main():
             if SIM_RW:
                 sim_visualizer.update_time_stamp(t)
                 sim_visualizer.update_goal( x_g )
+                sim_visualizer.fig.canvas.draw()  
                 sim_visualizer.update_trajectory( state_history[:step+1] ) # up to the latest data
             if SIM_BOTH_WORLDS:
                 sim_visualizer_bw.update_time_stamp(t)
@@ -379,6 +380,7 @@ def main():
                 bw_obst.set_center(qi)
                 bw_obst.set_radius(r)
                 bw_safe_set.set_radius(r0value)
+                sim_visualizer_bw.fig.canvas.draw()
             plt.pause(0.000001)  
 
         # Update bw
