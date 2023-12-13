@@ -73,7 +73,8 @@ def calculateJacobian(M):
     qgx, qgy = symbols('qgx qgy')
     r = symbols('r0:{}'.format(M))
     r = Matrix(r)
-    circle_obst_r = 1.0
+    circle_obst_r = 0.5
+    world_r = 5.0
     #for i in range(0,M):
     #    print(r[i])
     rvalues = [10.0, 2.0, 2.5]
@@ -96,7 +97,8 @@ def calculateJacobian(M):
     for i in range(0,M):
         theta_i.append(atan2(x[1]-xi[i][1], x[0]-xi[i][0]))
     beta_i = []
-    beta0 = r0**2 - (x[0]-xi[0][0])**2 + (x[1]-xi[0][1])**2
+    # r_0 
+    beta0 = world_r**2 - ((x[0]-xi[0][0])**2 + (x[1]-xi[0][1])**2)
     beta_i.append(beta0)
     for i in range(1,M):
         beta_i.append((x[0]-xi[0][0])**2 + (x[1]-xi[0][1])**2 - circle_obst_r**2)
@@ -122,12 +124,6 @@ def calculateJacobian(M):
     F_list.append(sigmag*(x-xg-qg))
     F = sum(F_list)
     J11 = diff(F[0],px)
-    #print(J11)
-    # px py xg1 xg2 r0 r1 r2 xi1 xi2 xi11 xi22 ri0 ri1 ri2
-    # q01 q02 q11 q12 q21 q22
-    # qg1 qg2
-    #J11s = J11.subs({px:1.0, py:2.0, xg1:1.0, xg2:1.0, r0:10.0, r1:2.0, x1x:0.1, x1y:0.3, x2x:2.1, x2y:1.0, ri0:1.1, ri1:1.1, q01:1.1, q11:1.1, qg1:2.1})
-    #print(J11s)
     J12 = diff(F[0],py)
     J21 = diff(F[1],px)
     J22 = diff(F[1],py)
@@ -136,6 +132,7 @@ def calculateJacobian(M):
     #Jacobian = matrix([[diff(F[i], px) for i in range(0,1)],
     #                   [diff(F[i], py) for i in range(0,1)]])
     J = [J11, J12, J21, J22]
+    
     return J
 
 
@@ -161,12 +158,12 @@ def main():
     Kp = 1
     l = 0.06
     Kappa = 1
-    gamma = 1
-    q_t0 = np.array([0., 0])
-    r_t0 = 1.0
+    gamma = 2
+    q_t0 = np.array([2., 2])
+    r_t0 = 0.5
     t = 0.0
     qi = q_t0
-    q = np.array([2.0, 2.0])
+    q = np.array([1, 1])
     r = r_t0
     r0_t0 = 5.0
     r0value = r0_t0
@@ -203,7 +200,7 @@ def main():
     if IS_SHOWING_2DVISUALIZATION: # Initialize Plot
         if SIM_RW:
             if OMNI: 
-                sim_visualizer = sim_mobile_robot( 'omnidirectional', 1 )
+                sim_visualizer = sim_mobile_robot( 'omnidirectional', 1)
             else: 
                 sim_visualizer = sim_mobile_robot( 'unicycle' )
             sim_visualizer.set_field( field_x, field_y ) # set plot area
@@ -219,10 +216,10 @@ def main():
 
         if SIM_BOTH_WORLDS:
             if OMNI:
-                sim_visualizer_bw = sim_mobile_robot( 'omnidirectional', 2 )
+                sim_visualizer_bw = sim_mobile_robot( 'omnidirectional', 2)
             else: 
                 sim_visualizer_bw = sim_mobile_robot( 'unicycle' )
-            sim_visualizer_bw.set_field( [-10, 10], [-10, 10]) # set plot area
+            sim_visualizer_bw.set_field( [-7.5, 7.5], [-7.5, 7.5]) # set plot area
             sim_visualizer_bw.show_goal(q_g)
             bw_obst = plt.Circle((q_t0), r_t0, color='r', fill=False)
             bw_safe_set = plt.Circle((q0), r0_t0, color='b', fill=False)
@@ -249,10 +246,10 @@ def main():
         J21s = J21s_lambd(x[0], x[1], x_g[0], x_g[1], rho_i[0], rho_i[1], xi[0], xi[1], q0[0], q0[1], qi[0], qi[1], q_g[0], q_g[1])
         J22s = J22s_lambd(x[0], x[1], x_g[0], x_g[1], rho_i[0], rho_i[1], xi[0], xi[1], q0[0], q0[1], qi[0], qi[1], q_g[0], q_g[1])
 
-        ux = Kp * (x_g[0] - x[0])
-        uy = Kp * (x_g[1] - x[1])
-        ux = min(max(ux, -MAX_LINEAR_VEL), MAX_LINEAR_VEL)
-        uy = min(max(uy, -MAX_LINEAR_VEL), MAX_LINEAR_VEL)
+        # ux = Kp * (x_g[0] - x[0])
+        # uy = Kp * (x_g[1] - x[1])
+        # ux = min(max(ux, -MAX_LINEAR_VEL), MAX_LINEAR_VEL)
+        # uy = min(max(uy, -MAX_LINEAR_VEL), MAX_LINEAR_VEL)
 
 
         q_dot = np.array([J11s*ux+J12s*uy, J21s*ux+J22s*uy]).T
