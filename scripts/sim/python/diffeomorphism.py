@@ -23,12 +23,12 @@ def diffeomorphismF(M, x, xi, x_g, rho_i, qi, q_g):
 
     beta_i = []
     #beta_i.append(rho_i[0]**2 - np.linalg.norm(x-xi[0])**2)
-    beta_i.append(rho_i[0]**2 - ((x[0]-xi[0][0])**2 + (x[1]-xi[0][1])**2))
+    beta_i.append(r_rw[0]**2 - ((x[0]-xi[0][0])**2 + (x[1]-xi[0][1])**2))
 
     for i in range(1,M):
         #beta_i.append(((x[0]-xi[i][0]-a)**2 + (x[1]-xi[i][1])**2)*((x[0]-xi[i][0]+a)**2 + (x[1]-xi[i][1])**2) - b**4)
         #beta_i.append(np.linalg.norm(x-xi[i])**2 - rho_i[i]**2)
-        beta_i.append(((x[0]-xi[i][0])**2 + (x[1]-xi[i][1])**2) - rho_i[i]**2)
+        beta_i.append(((x[0]-xi[i][0])**2 + (x[1]-xi[i][1])**2) - r_rw[i]**2)
     
     beta_dash_i = {}
     for i in range(0,M):
@@ -48,18 +48,16 @@ def diffeomorphismF(M, x, xi, x_g, rho_i, qi, q_g):
         else:
             ri = r_rw[1]
             #ri = calculate_r(x, xi[i])
-        fi = (np.linalg.norm(x-xi[i])/ri)*np.array([np.cos(theta), np.sin(theta)]).T
+        #fi = (np.linalg.norm(x-xi[i])/ri)*np.array([np.cos(theta), np.sin(theta)]).T
 
-        # This is for the old paper diffeomorphism
-        '''    
+        # This is for the old paper diffeomorphism  
         if i == 0:
             fi = rho_i[i] * ((1-beta_i[i]) / (np.linalg.norm(x-xi[i])))
         else:
             fi = rho_i[i] * ((1+beta_i[i]) / (np.linalg.norm(x-xi[i])))
         l = sigma_i*(fi * (x-xi[i]) + qi[i])
-        '''
-        l = sigma_i*(rho_i[i]*fi+qi[i])
-
+        
+        #l = sigma_i*(rho_i[i]*fi+qi[i]) # For original paper
         F_list.append(l)
     sigma_g = 1 - sigma
     F_list.append(sigma_g * (x-x_g+q_g))
@@ -84,7 +82,7 @@ def main():
     q_g = x_g
 
     ##-- Change thease to bend the ball world --##
-    rho_i = np.array([5.0, 0.7])       # Ball world radius, obstacle radius
+    rho_i = np.array([5.0, 0.5])       # Ball world radius, obstacle radius
 
     field_x = np.array([-2.5, 2.5])
     field_y = np.array([-2.5, 2.5])

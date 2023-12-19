@@ -8,7 +8,7 @@ def calculate_theta(x, xi):
     return theta
 
 
-def diffeomorphismF(M, x, xi, x_g, rho_i, qi, q_g):
+""" def diffeomorphismF(M, x, xi, x_g, rho_i, qi, q_g):
     lam = 100
     #a = 1
     #b = 1.1
@@ -42,6 +42,63 @@ def diffeomorphismF(M, x, xi, x_g, rho_i, qi, q_g):
     sigma_g = 1 - sigma
     F_list.append(sigma_g * (x-x_g+q_g))
     F = sum(F_list)
+    return F """
+
+def diffeomorphismF(M, x, xi, x_g, rho_i, qi, q_g):
+
+    r_rw = [5.0, 0.5]
+
+    lam = 100
+    a = 1
+    b = 1.1
+    gamma = (np.linalg.norm(x-x_g))**2
+    F_list = []
+
+    beta_i = []
+    #beta_i.append(rho_i[0]**2 - np.linalg.norm(x-xi[0])**2)
+    beta_i.append(rho_i[0]**2 - ((x[0]-xi[0][0])**2 + (x[1]-xi[0][1])**2))
+
+    for i in range(1,M):
+        #beta_i.append(((x[0]-xi[i][0]-a)**2 + (x[1]-xi[i][1])**2)*((x[0]-xi[i][0]+a)**2 + (x[1]-xi[i][1])**2) - b**4)
+        #beta_i.append(np.linalg.norm(x-xi[i])**2 - rho_i[i]**2)
+        beta_i.append(((x[0]-xi[i][0])**2 + (x[1]-xi[i][1])**2) - rho_i[i]**2)
+    
+    beta_dash_i = {}
+    for i in range(0,M):
+        p = []
+        for j in range(0,M):
+            if i != j:
+                p.append(beta_i[j])
+        beta_dash_i[i] = np.prod(p)
+
+    sigma = 0.0
+    for i in range(0,M):
+        sigma_i = (gamma*beta_dash_i[i])/(gamma*beta_dash_i[i]+lam*beta_i[i])
+        sigma += sigma_i
+        theta = calculate_theta(x,xi[i])
+        if i == 0:
+            ri = r_rw[0]
+        else:
+            ri = r_rw[1]
+            #ri = calculate_r(x, xi[i])
+        fi = (np.linalg.norm(x-xi[i])/ri)*np.array([np.cos(theta), np.sin(theta)]).T
+
+        # This is for the old paper diffeomorphism
+        """    
+        if i == 0:
+            fi = rho_i[i] * ((1-beta_i[i]) / (np.linalg.norm(x-xi[i])))
+        else:
+            fi = rho_i[i] * ((1+beta_i[i]) / (np.linalg.norm(x-xi[i])))
+        l = sigma_i*(fi * (x-xi[i]) + qi[i])
+        
+        """
+        l = sigma_i*(rho_i[i]*fi+qi[i])
+        F_list.append(l)
+    sigma_g = 1 - sigma
+    F_list.append(sigma_g * (x-x_g+q_g))
+    F = sum(F_list)
+    #print(sigma_g * (x-x_g+q_g))
+    #print(F)
     return F
 
 
@@ -50,7 +107,7 @@ x_initial, y_initial = np.meshgrid(np.linspace(-2.5, 2.5, grid_size), np.linspac
 x_initial = x_initial.flatten()
 y_initial = y_initial.flatten()
 xi = np.array([[0., 0.], [1., 1.]])
-rho_i = np.array([5.0, 0.5])
+rho_i = np.array([5.0, 0.7])
 
 def update_positions(x_initial, y_initial, xi, rho_i):
     x_ = np.array([x_initial[0], y_initial[0]])

@@ -93,15 +93,20 @@ def calculateJacobian(M):
         rho = [r0, r1, r2]
     if M == 3:
         xi = [np.array([0., 0.]), np.array([x1x, x1y]), np.array([x2x, x2y])]
+
     theta_i = []
     for i in range(0,M):
         theta_i.append(atan2(x[1]-xi[i][1], x[0]-xi[i][0]))
+
     beta_i = []
     # r_0 
-    beta0 = world_r**2 - ((x[0]-xi[0][0])**2 + (x[1]-xi[0][1])**2)
+    beta0 = ri[0]**2 - ((x[0]-xi[0][0])**2 + (x[1]-xi[0][1])**2)
+    #beta0 = rho[0]**2 - (sqrt((x[0]-xi[0][0])**2 + (x[1]-xi[0][1])**2))**2
     beta_i.append(beta0)
     for i in range(1,M):
-        beta_i.append((x[0]-xi[0][0])**2 + (x[1]-xi[0][1])**2 - circle_obst_r**2)
+        #beta_i.append((sqrt((x[0]-xi[i][0])**2 + (x[1]-xi[i][1])**2))**2 - rho[i]**2)
+        beta_i.append(((x[0]-xi[i][0])**2 + (x[1]-xi[i][1])**2) - ri[i]**2)
+
     beta_dash_i = {}
     for i in range(0,M):
         p = []
@@ -109,37 +114,35 @@ def calculateJacobian(M):
             if i != j:
                 p.append(beta_i[j])
         beta_dash_i[i] = np.prod(p)
-    gamma = (sqrt((x[0]-xg[0])**2 + (x[1]-xg[1])**2))**2
+        
+    gamma = sqrt((x[0]-xg[0])**2 + (x[1]-xg[1])**2)**2
+
     F_list = []
     sigma = []
     #(np.linalg.norm(x-xi)/(1+beta_i[i]))
     for i in range(0,M):
         sigma_i = (gamma*beta_dash_i[i])/(gamma*beta_dash_i[i]+lam*beta_i[i])
         sigma.append(sigma_i)
-        #f = ((sqrt((x[0]-xi[i][0])**2 + (x[1]-xi[i][1])**2))/ri[i])*np.array([cos(theta_i[i]), sin(theta_i[i])]).T
-        f = (1 / circle_obst_r) * (x - xi[i])
+        f = ((sqrt((x[0]-xi[i][0])**2 + (x[1]-xi[i][1])**2))/ri[i]) * np.array([cos(theta_i[i]), sin(theta_i[i])]).T
+        #f = (1 / ri[i]) * (x - xi[i])
         l = sigma_i*(rho[i]*f+qi[i])
         F_list.append(l)
     sigmag = 1 - sum(sigma)
-    F_list.append(sigmag*(x-xg-qg))
+    F_list.append(sigmag*(x-xg+qg))
     F = sum(F_list)
+
     J11 = diff(F[0],px)
     J12 = diff(F[0],py)
     J21 = diff(F[1],px)
     J22 = diff(F[1],py)
-    # J11*J12
-    #J = matrix([J11, J12])
-    #Jacobian = matrix([[diff(F[i], px) for i in range(0,1)],
-    #                   [diff(F[i], py) for i in range(0,1)]])
     J = [J11, J12, J21, J22]
-    
     return J
 
 
 def main():
     # Constants and Settings
     Ts = 0.01 # Update simulation every 10ms
-    t_max = 120.0 # total simulation duration in seconds
+    t_max = 0.01 # total simulation duration in seconds
     # Set initial state
     IS_SHOWING_2DVISUALIZATION = True
     MAX_ANGULAR_VEL = 2.84
@@ -159,11 +162,11 @@ def main():
     l = 0.06
     Kappa = 1
     gamma = 2
-    q_t0 = np.array([2., 2])
+    q_t0 = np.array([0., 0.4])
     r_t0 = 0.5
     t = 0.0
     qi = q_t0
-    q = np.array([1, 1])
+    q = np.array([2, 2])
     r = r_t0
     r0_t0 = 5.0
     r0value = r0_t0
@@ -189,10 +192,10 @@ def main():
     J12 = Jacobian[1]   # dF1/dy
     J21 = Jacobian[2]   # dF2/dx
     J22 = Jacobian[3]   # dF2/dy
-    J11s_lambd = lambdify([px, py, xg1, xg2, r0, r1, x1x, x1y, q0x, q0y, q1x, q1y, qgx, qgy], J11, "numpy")
-    J12s_lambd = lambdify([px, py, xg1, xg2, r0, r1, x1x, x1y, q0x, q0y, q1x, q1y, qgx, qgy], J12, "numpy")
-    J21s_lambd = lambdify([px, py, xg1, xg2, r0, r1, x1x, x1y, q0x, q0y, q1x, q1y, qgx, qgy], J21, "numpy")
-    J22s_lambd = lambdify([px, py, xg1, xg2, r0, r1, x1x, x1y, q0x, q0y, q1x, q1y, qgx, qgy], J22, "numpy")
+    J11s_lambd = lambdify([px, py, xg1, xg2, r0, r1, x1x, x1y, q0x, q0y, q1x, q1y, qgx, qgy, ri0, ri1], J11, "numpy")
+    J12s_lambd = lambdify([px, py, xg1, xg2, r0, r1, x1x, x1y, q0x, q0y, q1x, q1y, qgx, qgy, ri0, ri1], J12, "numpy")
+    J21s_lambd = lambdify([px, py, xg1, xg2, r0, r1, x1x, x1y, q0x, q0y, q1x, q1y, qgx, qgy, ri0, ri1], J21, "numpy")
+    J22s_lambd = lambdify([px, py, xg1, xg2, r0, r1, x1x, x1y, q0x, q0y, q1x, q1y, qgx, qgy, ri0, ri1], J22, "numpy")
 
     #J = calculateJacobian(Fsym)
     #F = diffeomorphismF(M, x, xi, x_g, rho_i, qiF, q_g)
@@ -212,7 +215,7 @@ def main():
             yc1 = q_t0[1]
             beta_values = beta(x_mesh, y_mesh, xc1, yc1)
             # sim_visualizer.ax.contour(x_mesh, y_mesh, beta_values, levels=[0], colors='r')
-            sim_visualizer.ax.add_patch(plt.Circle(([xi[0], xi[1]]), 1.0))
+            sim_visualizer.ax.add_patch(plt.Circle(([xi[0], xi[1]]), r_t0))
 
         if SIM_BOTH_WORLDS:
             if OMNI:
@@ -230,7 +233,11 @@ def main():
     state_history_q = np.zeros((100000, 2))
 
     step = 0
-    while t < t_max:
+    while t < t_max and (sqrt((x[0]-x_g[0])**2 + (x[1]-x_g[1])**2) > 0.1):
+        #print("x: ", x ,", x_g: ", x_g)
+        print(sqrt((x[0]-x_g[0])**2 + (x[1]-x_g[1])**2))
+        print(np.linalg.norm(x-x_g[0:1]))
+        
         state_history[step] = x
         state_history_q[step] = q
 
@@ -241,13 +248,13 @@ def main():
         #J11s = J11.subs({px:1.0, py:2.0, xg1:1.0, xg2:1.0, r0:10.0, r1:2.0, x1x:0.1, x1y:0.3, x2x:2.1, x2y:1.0, ri0:1.1, ri1:1.1, q01:1.1, q11:1.1, qg1:2.1})
         
         # ri0 ja ri1 !!!
-        J11s = J11s_lambd(x[0], x[1], x_g[0], x_g[1], rho_i[0], rho_i[1], xi[0], xi[1], q0[0], q0[1], qi[0], qi[1], q_g[0], q_g[1])
-        J12s = J12s_lambd(x[0], x[1], x_g[0], x_g[1], rho_i[0], rho_i[1], xi[0], xi[1], q0[0], q0[1], qi[0], qi[1], q_g[0], q_g[1])
-        J21s = J21s_lambd(x[0], x[1], x_g[0], x_g[1], rho_i[0], rho_i[1], xi[0], xi[1], q0[0], q0[1], qi[0], qi[1], q_g[0], q_g[1])
-        J22s = J22s_lambd(x[0], x[1], x_g[0], x_g[1], rho_i[0], rho_i[1], xi[0], xi[1], q0[0], q0[1], qi[0], qi[1], q_g[0], q_g[1])
+        J11s = J11s_lambd(x[0], x[1], x_g[0], x_g[1], rho_i[0], rho_i[1], xi[0], xi[1], q0[0], q0[1], qi[0], qi[1], q_g[0], q_g[1], r0_t0, r_t0)
+        J12s = J12s_lambd(x[0], x[1], x_g[0], x_g[1], rho_i[0], rho_i[1], xi[0], xi[1], q0[0], q0[1], qi[0], qi[1], q_g[0], q_g[1], r0_t0, r_t0)
+        J21s = J21s_lambd(x[0], x[1], x_g[0], x_g[1], rho_i[0], rho_i[1], xi[0], xi[1], q0[0], q0[1], qi[0], qi[1], q_g[0], q_g[1], r0_t0, r_t0)
+        J22s = J22s_lambd(x[0], x[1], x_g[0], x_g[1], rho_i[0], rho_i[1], xi[0], xi[1], q0[0], q0[1], qi[0], qi[1], q_g[0], q_g[1], r0_t0, r_t0)
 
-        # ux = Kp * (x_g[0] - x[0])
-        # uy = Kp * (x_g[1] - x[1])
+        ux = Kp * (x_g[0] - x[0])
+        uy = Kp * (x_g[1] - x[1])
         # ux = min(max(ux, -MAX_LINEAR_VEL), MAX_LINEAR_VEL)
         # uy = min(max(uy, -MAX_LINEAR_VEL), MAX_LINEAR_VEL)
 
@@ -264,8 +271,11 @@ def main():
         # 6
 
         # C1 + C0
-        hi = (np.linalg.norm(qi-q))**2 - r**2
-        h0 = r0value**2 - (np.linalg.norm(q0-q))**2
+        #hi = (np.linalg.norm(qi-q))**2 - r**2
+        hi = sqrt((qi[0]-q[0])**2 + (qi[1]-q[1])**2)**2 - r**2
+        #h0 = r0value**2 - (np.linalg.norm(q0-q))**2
+        h0 = r0value**2 - (sqrt((q0[0]-q[0])**2 + (q0[1]-q[1])**2))**2
+
         AC1 = matrix([[-2*(qi[0]-q[0]), -2*(qi[1]-q[1]), 2*r]]).T
         #print(AC1)
         AC0 = -2*r0value
@@ -278,7 +288,8 @@ def main():
         #bC2 = gamma*hij
 
         # C3
-        hi0 = (r0value-r)**2 - np.linalg.norm(qi-q0)**2
+        #hi0 = (r0value-r)**2 - np.linalg.norm(qi-q0)**2
+        hi0 = (r0value-r)**2 - sqrt((qi[0]-q0[0])**2 + (qi[1]-q0[1])**2)**2
         AC3 = matrix([[2*(qi[0]-q0[0]), 2*(qi[1]-q0[1]), 2*(r0value-r), -2*(r0value-r)]])
         bC3 = float(gamma*hi0)
 
@@ -316,10 +327,10 @@ def main():
         t += Ts
 
         # 8
-        J11s = J11s_lambd(x[0], x[1], x_g[0], x_g[1], rho_i[0], rho_i[1], xi[0], xi[1], q0[0], q0[1], qi[0], qi[1], q_g[0], q_g[1])
-        J12s = J12s_lambd(x[0], x[1], x_g[0], x_g[1], rho_i[0], rho_i[1], xi[0], xi[1], q0[0], q0[1], qi[0], qi[1], q_g[0], q_g[1])
-        J21s = J21s_lambd(x[0], x[1], x_g[0], x_g[1], rho_i[0], rho_i[1], xi[0], xi[1], q0[0], q0[1], qi[0], qi[1], q_g[0], q_g[1])
-        J22s = J22s_lambd(x[0], x[1], x_g[0], x_g[1], rho_i[0], rho_i[1], xi[0], xi[1], q0[0], q0[1], qi[0], qi[1], q_g[0], q_g[1])
+        J11s = J11s_lambd(x[0], x[1], x_g[0], x_g[1], rho_i[0], rho_i[1], xi[0], xi[1], q0[0], q0[1], qi[0], qi[1], q_g[0], q_g[1], r0_t0, r_t0)
+        J12s = J12s_lambd(x[0], x[1], x_g[0], x_g[1], rho_i[0], rho_i[1], xi[0], xi[1], q0[0], q0[1], qi[0], qi[1], q_g[0], q_g[1], r0_t0, r_t0)
+        J21s = J21s_lambd(x[0], x[1], x_g[0], x_g[1], rho_i[0], rho_i[1], xi[0], xi[1], q0[0], q0[1], qi[0], qi[1], q_g[0], q_g[1], r0_t0, r_t0)
+        J22s = J22s_lambd(x[0], x[1], x_g[0], x_g[1], rho_i[0], rho_i[1], xi[0], xi[1], q0[0], q0[1], qi[0], qi[1], q_g[0], q_g[1], r0_t0, r_t0)
         
 
         jacobian = np.array([[J11s, J12s], [J21s, J22s]], dtype=float)
@@ -402,5 +413,5 @@ def main():
             theta_robot = ( (theta_robot + np.pi) % (2*np.pi) ) - np.pi # ensure theta within [-pi pi]
 
         step += 1
-
+    plt.show()
 main()
