@@ -130,16 +130,15 @@ def calculateJacobian(M):
     J22 = diff(F[1],py)
     J = [J11, J12, J21, J22]
 
-    # What is gradient sigma or beta?
+    # What is gradient beta?
     # What is q-qj hat?
-    # ri0 and ri1 or r0 and r1?
-    v0 = ri0*((1-beta_i[0])/((sqrt((x[0]-xi[0][0])**2 + (x[1]-xi[0][1])**2))))
+    v0 = r0*((1-beta_i[0])/((sqrt((x[0]-xi[0][0])**2 + (x[1]-xi[0][1])**2))))
     dx0 = sqrt((x[0]-xi[0][0])**2 + (x[1]-xi[0][1])**2)
     # Missing gradient beta
-    gv0 = ri0/(dx0*dx0)*(dx0 - (1+beta_i[0])/(dx0)*(x-xi[0]))
-    v1 = ri1*((1+beta_i[1])/((sqrt((x[0]-xi[1][0])**2 + (x[1]-xi[1][1])**2))))
+    gv0 = r0/(dx0*dx0)*(dx0 - (1+beta_i[0])/(dx0)*(x-xi[0]))
+    v1 = r1*((1+beta_i[1])/((sqrt((x[0]-xi[1][0])**2 + (x[1]-xi[1][1])**2))))
     dx1 = sqrt((x[0]-xi[1][0])**2 + (x[1]-xi[1][1])**2)
-    gv1 = ri1/(dx1*dx1)*(dx1 - (1+beta_i[1])/(dx1)*(x-xi[1]))
+    gv1 = r1/(dx1*dx1)*(dx1 - (1+beta_i[1])/(dx1)*(x-xi[1]))
     v = [v0, v1]
     gv = [gv0, gv1]
     # Missing gradient beta and gradient gamma*beta_dash
