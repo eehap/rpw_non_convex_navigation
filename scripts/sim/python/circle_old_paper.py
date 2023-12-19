@@ -71,15 +71,8 @@ def calculateJacobian(M):
     px, py, xg1, xg2, r0, r1, r2, x1x, x1y, x2x, x2y, ri0, ri1, ri2 = symbols('px py xg1 xg2 r0 r1 r2 x1x x1y x2x x2y ri0 ri1 ri2')
     q0x, q0y, q1x, q1y, q2x, q2y = symbols('q0x q0y q1x q1y q2x q2y')
     qgx, qgy = symbols('qgx qgy')
-    r = symbols('r0:{}'.format(M))
-    r = Matrix(r)
     circle_obst_r = 0.5
     world_r = 5.0
-    #for i in range(0,M):
-    #    print(r[i])
-    rvalues = [10.0, 2.0, 2.5]
-    rs = [r[i].subs({r[i]: rvalues[i]}) for i in range(M)]
-    #print(rs)
     lam = 100
     a = 1
     b = 1.1
@@ -100,12 +93,12 @@ def calculateJacobian(M):
 
     beta_i = []
     # r_0 
-    beta0 = ri[0]**2 - ((x[0]-xi[0][0])**2 + (x[1]-xi[0][1])**2)
-    #beta0 = rho[0]**2 - (sqrt((x[0]-xi[0][0])**2 + (x[1]-xi[0][1])**2))**2
+    #beta0 = ri[0]**2 - ((x[0]-xi[0][0])**2 + (x[1]-xi[0][1])**2)
+    beta0 = rho[0]**2 - (sqrt((x[0]-xi[0][0])**2 + (x[1]-xi[0][1])**2))**2
     beta_i.append(beta0)
     for i in range(1,M):
-        #beta_i.append((sqrt((x[0]-xi[i][0])**2 + (x[1]-xi[i][1])**2))**2 - rho[i]**2)
-        beta_i.append(((x[0]-xi[i][0])**2 + (x[1]-xi[i][1])**2) - ri[i]**2)
+        beta_i.append((sqrt((x[0]-xi[i][0])**2 + (x[1]-xi[i][1])**2))**2 - rho[i]**2)
+        #beta_i.append(((x[0]-xi[i][0])**2 + (x[1]-xi[i][1])**2) - ri[i]**2)
 
     beta_dash_i = {}
     for i in range(0,M):
@@ -136,6 +129,31 @@ def calculateJacobian(M):
     J21 = diff(F[1],px)
     J22 = diff(F[1],py)
     J = [J11, J12, J21, J22]
+
+    # What is gradient sigma or beta?
+    # What is q-qj hat?
+    # ri0 and ri1 or r0 and r1?
+    v0 = ri0*((1-beta_i[0])/((sqrt((x[0]-xi[0][0])**2 + (x[1]-xi[0][1])**2))))
+    dx0 = sqrt((x[0]-xi[0][0])**2 + (x[1]-xi[0][1])**2)
+    # Missing gradient beta
+    gv0 = ri0/(dx0*dx0)*(dx0 - (1+beta_i[0])/(dx0)*(x-xi[0]))
+    v1 = ri1*((1+beta_i[1])/((sqrt((x[0]-xi[1][0])**2 + (x[1]-xi[1][1])**2))))
+    dx1 = sqrt((x[0]-xi[1][0])**2 + (x[1]-xi[1][1])**2)
+    gv1 = ri1/(dx1*dx1)*(dx1 - (1+beta_i[1])/(dx1)*(x-xi[1]))
+    v = [v0, v1]
+    gv = [gv0, gv1]
+    # Missing gradient beta and gradient gamma*beta_dash
+    gsigma0 = (lam/((gamma*beta_dash_i[0]+lam*beta_i[0])**2))*(beta_i[0] - gamma*beta_dash_i[0])
+    # Missing gradient beta and gradient gamma*beta_dash
+    gsigma1 = (lam/((gamma*beta_dash_i[1]+lam*beta_i[1])**2))*(beta_i[1] - gamma*beta_dash_i[1])
+    gsigma = [gsigma0, gsigma1]
+    Dh = 0.0
+    for i in range(0,M):
+        Dh = sigma[i]*v[i]*np.eye(M) + sigma[i]*(x-xi[i]) * gv[i].T + (v[i]-1)*(x-xi[i])*gsigma[i]
+    Dh += sigmag*np.eye(M)
+    print(Dh)
+    #n = np.gradient(sigmag)
+    #print(n)
     return J
 
 
