@@ -130,14 +130,20 @@ def calculateJacobian(M):
     J22 = diff(F[1],py)
     J = [J11, J12, J21, J22]
 
-    # What is gradient beta?
-    # What is q-qj hat?
+    # Old paper Jacobian
     v0 = r0*((1-beta_i[0])/((sqrt((x[0]-xi[0][0])**2 + (x[1]-xi[0][1])**2))))
     dx0 = sqrt((x[0]-xi[0][0])**2 + (x[1]-xi[0][1])**2)
+    gbeta0 = [diff(beta_i[0], var) for var in [px, py, r0]]
+    print(beta_i[0])
+    print(gbeta0)
+    print(dx0)
+    helper = np.array([dx0*gbeta0[0], dx0*gbeta0[1], dx0*gbeta0[2]])
+    print(helper)
     # Missing gradient beta
     gv0 = r0/(dx0*dx0)*(dx0 - (1+beta_i[0])/(dx0)*(x-xi[0]))
     v1 = r1*((1+beta_i[1])/((sqrt((x[0]-xi[1][0])**2 + (x[1]-xi[1][1])**2))))
     dx1 = sqrt((x[0]-xi[1][0])**2 + (x[1]-xi[1][1])**2)
+    # Missing gradient beta
     gv1 = r1/(dx1*dx1)*(dx1 - (1+beta_i[1])/(dx1)*(x-xi[1]))
     v = [v0, v1]
     gv = [gv0, gv1]
@@ -151,8 +157,7 @@ def calculateJacobian(M):
         Dh = sigma[i]*v[i]*np.eye(M) + sigma[i]*(x-xi[i]) * gv[i].T + (v[i]-1)*(x-xi[i])*gsigma[i]
     Dh += sigmag*np.eye(M)
     print(Dh)
-    #n = np.gradient(sigmag)
-    #print(n)
+
     return J
 
 
