@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.linalg import norm
 import matplotlib.pyplot as plt
 from math import atan2, cos, sin, sqrt
 from sympy import *
@@ -107,6 +108,7 @@ def calculateJacobian(M):
             if i != j:
                 p.append(beta_i[j])
         beta_dash_i[i] = np.prod(p)
+
         
     gamma = sqrt((x[0]-xg[0])**2 + (x[1]-xg[1])**2)**2
 
@@ -131,14 +133,17 @@ def calculateJacobian(M):
     J = [J11, J12, J21, J22]
 
     # Old paper Jacobian
+    r0 = 5.0
+    r1 = 0.5
     v0 = r0*((1-beta_i[0])/((sqrt((x[0]-xi[0][0])**2 + (x[1]-xi[0][1])**2))))
     dx0 = sqrt((x[0]-xi[0][0])**2 + (x[1]-xi[0][1])**2)
-    gbeta0 = [diff(beta_i[0], var) for var in [px, py, r0]]
-    print(beta_i[0])
-    print(gbeta0)
-    print(dx0)
-    helper = np.array([dx0*gbeta0[0], dx0*gbeta0[1], dx0*gbeta0[2]])
-    print(helper)
+    # gbeta0 = [diff(beta_i[0], var) for var in [px, py, r0]]
+    gbeta0 = np.array([-2*px, -2*py, 2*r0])
+    gbeta1 = np.array([-2*px, -2*py, 2*r1])
+    # print(beta_i)
+    # print(beta_dash_i)
+    # helper = np.array([dx0*gbeta0[0], dx0*gbeta0[1], dx0*gbeta0[2]])
+    # print(helper)
     # Missing gradient beta
     gv0 = r0/(dx0*dx0)*(dx0 - (1+beta_i[0])/(dx0)*(x-xi[0]))
     v1 = r1*((1+beta_i[1])/((sqrt((x[0]-xi[1][0])**2 + (x[1]-xi[1][1])**2))))
@@ -156,7 +161,44 @@ def calculateJacobian(M):
     for i in range(0,M):
         Dh = sigma[i]*v[i]*np.eye(M) + sigma[i]*(x-xi[i]) * gv[i].T + (v[i]-1)*(x-xi[i])*gsigma[i]
     Dh += sigmag*np.eye(M)
-    print(Dh)
+    # print(Dh)
+
+    return J
+
+def numerical_jacobian(q_robot, obst, radii, goal, lam):
+    gradient_beta_0 = np.array([-2*obst[0][0], -2*obst[0][1]])
+    gradient_beta_1 = np.array([-2*obst[1][0], -2*obst[1][1]])
+
+    beta_0 = radii[0] ** 2 - norm(q_robot - obst[0]) ** 2
+    beta_1 = norm(q_robot - obst[1]) ** 2 - radii[1] ** 2
+
+    v0 = radii[0] * (1 - beta_0) / norm(q_robot - obst[0])
+    v1 = radii[1] * (1 + beta_1) / norm(q_robot - obst[1])
+
+    gradient_v0 =  v0 * (norm(q_robot - obst[0]) / (1 + beta_0) * gradient_beta_0 - (1 / norm(q_robot - obst[0])) * q_robot - obst[0])
+    gradient_v1 =  v1 * (norm(q_robot - obst[1]) / (1 + beta_1) * gradient_beta_1 - (1 / norm(q_robot - obst[1])) * q_robot - obst[1])
+
+    gamma_d = norm(q_robot - goal[:1]) ** 2
+    # -2*py*((px - xg1)**2 + (py - xg2)**2) + (2*py - 2*xg2)*(-px**2 - py**2 + r0**2)
+    gradient_gamma_d_beta_dash_1 = np.array([-2*q_robot[0]*((q_robot[0] - goal[0]) ** 2) + ((q_robot[1] - goal[1])**2) + (2*q_robot[0] - 2*goal[0])*(-q_robot[0]**2 - q_robot[1]**2 + radii[0]**2),
+                                             -2*q_robot[1]*((q_robot[0] - goal[0]) ** 2) + ((q_robot[1] - goal[1])**2) + (2*q_robot[1] - 2*goal[1])*(-q_robot[0]**2 - q_robot[1]**2 + radii[0]**2)])
+    # (2*py - 2*x1y)*((px - xg1)**2 + (py - xg2)**2) + (2*py - 2*xg2)*(-r1**2 + (px - x1x)**2 + (py - x1y)**2)
+    gradient_gamma_d_beta_dash_0 = np.array([(2*q_robot[0] - 2*obst[1][0])*((q_robot[0] - goal[0])**2 + (q_robot[1] - goal[1])**2) + (2*q_robot[0] - 2*goal[0])*(-radii[1]**2 + (q_robot[0] - obst[1][0])**2 + (q_robot[1] - obst[1][1])**2),
+                                             (2*q_robot[1] - 2*obst[1][1])*((q_robot[0] - goal[0])**2 + (q_robot[1] - goal[1])**2) + (2*q_robot[1] - 2*goal[1])*(-radii[1]**2 + (q_robot[0] - obst[1][0])**2 + (q_robot[1] - obst[1][1])**2)])
+    beta_dash_0 = beta_1
+    beta_dash_1 = beta_0
+
+    sigma_0 = gamma_d * beta_dash_0 / (gamma_d * beta_dash_0 + lam * beta_0)
+    sigma_1 = gamma_d * beta_dash_1 / (gamma_d * beta_dash_1 + lam * beta_1)
+
+    sigma_d = 1 - (sigma_0 + sigma_1)
+
+    gradient_sigma_0 = (lam/((gamma_d*beta_dash_0+lam*beta_0)**2))*(beta_0 * gradient_gamma_d_beta_dash_0 - gamma_d*beta_dash_0*gradient_beta_0)
+    gradient_sigma_1 = (lam/((gamma_d*beta_dash_1+lam*beta_1)**2))*(beta_1 * gradient_gamma_d_beta_dash_1 - gamma_d*beta_dash_1*gradient_beta_1)
+    
+    
+    J = (sigma_0 * v0 * np.eye(2) + sigma_0 * (q_robot - obst[0]) * gradient_v0.T + (v0 - 1) * (q_robot - obst[0]) * gradient_sigma_0.T +
+         sigma_1 * v1 * np.eye(2) + sigma_1 * (q_robot - obst[1]) * gradient_v1.T + (v1 - 1) * (q_robot - obst[1]) * gradient_sigma_1.T) + sigma_d * np.eye(2)
 
     return J
 
@@ -164,7 +206,7 @@ def calculateJacobian(M):
 def main():
     # Constants and Settings
     Ts = 0.01 # Update simulation every 10ms
-    t_max = 0.01 # total simulation duration in seconds
+    t_max = 10.0 # total simulation duration in seconds
     # Set initial state
     IS_SHOWING_2DVISUALIZATION = True
     MAX_ANGULAR_VEL = 2.84
@@ -183,8 +225,9 @@ def main():
     Kp = 1
     l = 0.06
     Kappa = 1
-    gamma = 2
-    q_t0 = np.array([0., 0.4])
+    gamma = 0.1
+    lam = 100
+    q_t0 = np.array([.0, 1.0])
     r_t0 = 0.5
     t = 0.0
     qi = q_t0
@@ -209,15 +252,11 @@ def main():
     ux = Kp * (x_g[0] - x[0])
     uy = Kp * (x_g[1] - x[1])
 
-    Jacobian = calculateJacobian(M)
-    J11 = Jacobian[0]   # dF1/dx
-    J12 = Jacobian[1]   # dF1/dy
-    J21 = Jacobian[2]   # dF2/dx
-    J22 = Jacobian[3]   # dF2/dy
-    J11s_lambd = lambdify([px, py, xg1, xg2, r0, r1, x1x, x1y, q0x, q0y, q1x, q1y, qgx, qgy, ri0, ri1], J11, "numpy")
-    J12s_lambd = lambdify([px, py, xg1, xg2, r0, r1, x1x, x1y, q0x, q0y, q1x, q1y, qgx, qgy, ri0, ri1], J12, "numpy")
-    J21s_lambd = lambdify([px, py, xg1, xg2, r0, r1, x1x, x1y, q0x, q0y, q1x, q1y, qgx, qgy, ri0, ri1], J21, "numpy")
-    J22s_lambd = lambdify([px, py, xg1, xg2, r0, r1, x1x, x1y, q0x, q0y, q1x, q1y, qgx, qgy, ri0, ri1], J22, "numpy")
+    Jacobian = numerical_jacobian(x, qiF, rho_i, x_g, lam)
+    J11 = Jacobian[0][0]   # dF1/dx
+    J12 = Jacobian[0][1]   # dF1/dy
+    J21 = Jacobian[1][0]   # dF2/dx
+    J22 = Jacobian[1][1]   # dF2/dy
 
     #J = calculateJacobian(Fsym)
     #F = diffeomorphismF(M, x, xi, x_g, rho_i, qiF, q_g)
@@ -270,18 +309,19 @@ def main():
         #J11s = J11.subs({px:1.0, py:2.0, xg1:1.0, xg2:1.0, r0:10.0, r1:2.0, x1x:0.1, x1y:0.3, x2x:2.1, x2y:1.0, ri0:1.1, ri1:1.1, q01:1.1, q11:1.1, qg1:2.1})
         
         # ri0 ja ri1 !!!
-        J11s = J11s_lambd(x[0], x[1], x_g[0], x_g[1], rho_i[0], rho_i[1], xi[0], xi[1], q0[0], q0[1], qi[0], qi[1], q_g[0], q_g[1], r0_t0, r_t0)
-        J12s = J12s_lambd(x[0], x[1], x_g[0], x_g[1], rho_i[0], rho_i[1], xi[0], xi[1], q0[0], q0[1], qi[0], qi[1], q_g[0], q_g[1], r0_t0, r_t0)
-        J21s = J21s_lambd(x[0], x[1], x_g[0], x_g[1], rho_i[0], rho_i[1], xi[0], xi[1], q0[0], q0[1], qi[0], qi[1], q_g[0], q_g[1], r0_t0, r_t0)
-        J22s = J22s_lambd(x[0], x[1], x_g[0], x_g[1], rho_i[0], rho_i[1], xi[0], xi[1], q0[0], q0[1], qi[0], qi[1], q_g[0], q_g[1], r0_t0, r_t0)
+        Jacobian = numerical_jacobian(x, [q0, xi], rho_i, x_g, lam)
+        J11 = Jacobian[0][0]   # dF1/dx
+        J12 = Jacobian[0][1]   # dF1/dy
+        J21 = Jacobian[1][0]   # dF2/dx
+        J22 = Jacobian[1][1]   # dF2/dy
 
-        ux = Kp * (x_g[0] - x[0])
-        uy = Kp * (x_g[1] - x[1])
+        # ux = Kp * (x_g[0] - x[0])
+        # uy = Kp * (x_g[1] - x[1])
         # ux = min(max(ux, -MAX_LINEAR_VEL), MAX_LINEAR_VEL)
         # uy = min(max(uy, -MAX_LINEAR_VEL), MAX_LINEAR_VEL)
 
 
-        q_dot = np.array([J11s*ux+J12s*uy, J21s*ux+J22s*uy]).T
+        q_dot = np.array([J11*ux+J12*uy, J21*ux+J22*uy]).T
 
         # 5
 
@@ -337,7 +377,6 @@ def main():
         u_star_r = sol['x'][2]
         u_star_r0 = sol['x'][3]
 
-
         # 7
         
         qi[0] += u_star_qx*Ts
@@ -349,13 +388,7 @@ def main():
         t += Ts
 
         # 8
-        J11s = J11s_lambd(x[0], x[1], x_g[0], x_g[1], rho_i[0], rho_i[1], xi[0], xi[1], q0[0], q0[1], qi[0], qi[1], q_g[0], q_g[1], r0_t0, r_t0)
-        J12s = J12s_lambd(x[0], x[1], x_g[0], x_g[1], rho_i[0], rho_i[1], xi[0], xi[1], q0[0], q0[1], qi[0], qi[1], q_g[0], q_g[1], r0_t0, r_t0)
-        J21s = J21s_lambd(x[0], x[1], x_g[0], x_g[1], rho_i[0], rho_i[1], xi[0], xi[1], q0[0], q0[1], qi[0], qi[1], q_g[0], q_g[1], r0_t0, r_t0)
-        J22s = J22s_lambd(x[0], x[1], x_g[0], x_g[1], rho_i[0], rho_i[1], xi[0], xi[1], q0[0], q0[1], qi[0], qi[1], q_g[0], q_g[1], r0_t0, r_t0)
-        
-
-        jacobian = np.array([[J11s, J12s], [J21s, J22s]], dtype=float)
+        jacobian = numerical_jacobian(x, [q0, xi], rho_i, x_g, lam)
         inv_jacobian = np.linalg.inv( jacobian )
 
         x_dot = inv_jacobian @ q_dot
@@ -367,7 +400,6 @@ def main():
         print(f'uy:  {uy}')
         print(f'q_dotx:  {q_dot[0]}')
         print(f'q_doty:  {q_dot[1]}')
-
 
 
         if OMNI:
