@@ -72,7 +72,7 @@ def calculateJacobian(M):
     px, py, xg1, xg2, r0, r1, r2, x1x, x1y, x2x, x2y, ri0, ri1, ri2 = symbols('px py xg1 xg2 r0 r1 r2 x1x x1y x2x x2y ri0 ri1 ri2')
     q0x, q0y, q1x, q1y, q2x, q2y = symbols('q0x q0y q1x q1y q2x q2y')
     qgx, qgy = symbols('qgx qgy')
-    circle_obst_r = 0.5
+    circle_x_obst_r = 0.5
     world_r = 5.0
     lam = 100
     a = 1
@@ -165,26 +165,27 @@ def calculateJacobian(M):
 
     return J
 
-def numerical_jacobian(q_robot, obst, radii, goal, lam):
-    gradient_beta_0 = np.array([-2*obst[0][0], -2*obst[0][1]])
-    gradient_beta_1 = np.array([-2*obst[1][0], -2*obst[1][1]])
+def numerical_jacobian(x_robot, x_obst, q_radii, goal, lam):
 
-    beta_0 = radii[0] ** 2 - norm(q_robot - obst[0]) ** 2
-    beta_1 = norm(q_robot - obst[1]) ** 2 - radii[1] ** 2
+    gradient_beta_0 = np.array([-2*x_obst[0][0], -2*x_obst[0][1]])
+    gradient_beta_1 = np.array([-2*x_obst[1][0], -2*x_obst[1][1]])
+ 
+    beta_0 = q_radii[0] ** 2 - x_robot ** 2 - x_obst[0] ** 2
+    beta_1 = x_robot ** 2 - x_obst[1] ** 2 - q_radii[1] ** 2
+    
+    v0 = q_radii[0] * (1 - beta_0) / norm(x_robot - x_obst[0])
+    v1 = q_radii[1] * (1 + beta_1) / norm(x_robot - x_obst[1])
 
-    v0 = radii[0] * (1 - beta_0) / norm(q_robot - obst[0])
-    v1 = radii[1] * (1 + beta_1) / norm(q_robot - obst[1])
+    gradient_v0 =  v0 * (norm(x_robot - x_obst[0]) / (1 + beta_0) * gradient_beta_0 - (1 / norm(x_robot - x_obst[0])) * x_robot - x_obst[0])
+    gradient_v1 =  v1 * (norm(x_robot - x_obst[1]) / (1 + beta_1) * gradient_beta_1 - (1 / norm(x_robot - x_obst[1])) * x_robot - x_obst[1])
 
-    gradient_v0 =  v0 * (norm(q_robot - obst[0]) / (1 + beta_0) * gradient_beta_0 - (1 / norm(q_robot - obst[0])) * q_robot - obst[0])
-    gradient_v1 =  v1 * (norm(q_robot - obst[1]) / (1 + beta_1) * gradient_beta_1 - (1 / norm(q_robot - obst[1])) * q_robot - obst[1])
-
-    gamma_d = norm(q_robot - goal[:1]) ** 2
+    gamma_d = norm(x_robot - goal[:1]) ** 2
     # -2*py*((px - xg1)**2 + (py - xg2)**2) + (2*py - 2*xg2)*(-px**2 - py**2 + r0**2)
-    gradient_gamma_d_beta_dash_1 = np.array([-2*q_robot[0]*((q_robot[0] - goal[0]) ** 2) + ((q_robot[1] - goal[1])**2) + (2*q_robot[0] - 2*goal[0])*(-q_robot[0]**2 - q_robot[1]**2 + radii[0]**2),
-                                             -2*q_robot[1]*((q_robot[0] - goal[0]) ** 2) + ((q_robot[1] - goal[1])**2) + (2*q_robot[1] - 2*goal[1])*(-q_robot[0]**2 - q_robot[1]**2 + radii[0]**2)])
+    gradient_gamma_d_beta_dash_1 = np.array([-2*x_robot[0]*((x_robot[0] - goal[0]) ** 2) + ((x_robot[1] - goal[1])**2) + (2*x_robot[0] - 2*goal[0])*(-x_robot[0]**2 - x_robot[1]**2 + q_radii[0]**2),
+                                             -2*x_robot[1]*((x_robot[0] - goal[0]) ** 2) + ((x_robot[1] - goal[1])**2) + (2*x_robot[1] - 2*goal[1])*(-x_robot[0]**2 - x_robot[1]**2 + q_radii[0]**2)])
     # (2*py - 2*x1y)*((px - xg1)**2 + (py - xg2)**2) + (2*py - 2*xg2)*(-r1**2 + (px - x1x)**2 + (py - x1y)**2)
-    gradient_gamma_d_beta_dash_0 = np.array([(2*q_robot[0] - 2*obst[1][0])*((q_robot[0] - goal[0])**2 + (q_robot[1] - goal[1])**2) + (2*q_robot[0] - 2*goal[0])*(-radii[1]**2 + (q_robot[0] - obst[1][0])**2 + (q_robot[1] - obst[1][1])**2),
-                                             (2*q_robot[1] - 2*obst[1][1])*((q_robot[0] - goal[0])**2 + (q_robot[1] - goal[1])**2) + (2*q_robot[1] - 2*goal[1])*(-radii[1]**2 + (q_robot[0] - obst[1][0])**2 + (q_robot[1] - obst[1][1])**2)])
+    gradient_gamma_d_beta_dash_0 = np.array([(2*x_robot[0] - 2*x_obst[1][0])*((x_robot[0] - goal[0])**2 + (x_robot[1] - goal[1])**2) + (2*x_robot[0] - 2*goal[0])*(-q_radii[1]**2 + (x_robot[0] - x_obst[1][0])**2 + (x_robot[1] - x_obst[1][1])**2),
+                                             (2*x_robot[1] - 2*x_obst[1][1])*((x_robot[0] - goal[0])**2 + (x_robot[1] - goal[1])**2) + (2*x_robot[1] - 2*goal[1])*(-q_radii[1]**2 + (x_robot[0] - x_obst[1][0])**2 + (x_robot[1] - x_obst[1][1])**2)])
     beta_dash_0 = beta_1
     beta_dash_1 = beta_0
 
@@ -197,8 +198,10 @@ def numerical_jacobian(q_robot, obst, radii, goal, lam):
     gradient_sigma_1 = (lam/((gamma_d*beta_dash_1+lam*beta_1)**2))*(beta_1 * gradient_gamma_d_beta_dash_1 - gamma_d*beta_dash_1*gradient_beta_1)
     
     
-    J = (sigma_0 * v0 * np.eye(2) + sigma_0 * (q_robot - obst[0]) * gradient_v0.T + (v0 - 1) * (q_robot - obst[0]) * gradient_sigma_0.T +
-         sigma_1 * v1 * np.eye(2) + sigma_1 * (q_robot - obst[1]) * gradient_v1.T + (v1 - 1) * (q_robot - obst[1]) * gradient_sigma_1.T) + sigma_d * np.eye(2)
+    
+    
+    J = (sigma_0 * v0 * np.eye(2) + sigma_0 * (x_robot - x_obst[0]) * gradient_v0.T + (v0 - 1) * (x_robot - x_obst[0]) * gradient_sigma_0.T +
+         sigma_1 * v1 * np.eye(2) + sigma_1 * (x_robot - x_obst[1]) * gradient_v1.T + (v1 - 1) * (x_robot - x_obst[1]) * gradient_sigma_1.T) + sigma_d * np.eye(2)
 
     return J
 
@@ -217,10 +220,6 @@ def main():
 
     field_x = (-2.5, 2.5)
     field_y = (-2.5, 2.5)
-
-    px, py, xg1, xg2, r0, r1, r2, x1x, x1y, x2x, x2y, ri0, ri1, ri2 = symbols('px py xg1 xg2 r0 r1 r2 x1x x1y x2x x2y ri0 ri1 ri2')
-    q0x, q0y, q1x, q1y, q2x, q2y = symbols('q0x q0y q1x q1y q2x q2y')
-    qgx, qgy = symbols('qgx qgy')
 
     Kp = 1
     l = 0.06
@@ -243,8 +242,8 @@ def main():
     xi = qi
     qiF = [q0, qi]
     rho_i = [r0value, r]
-    obstacleCount = 1
-    M = obstacleCount + 1
+    x_obstacleCount = 1
+    M = x_obstacleCount + 1
     x_g = np.array([-2, -1, 0.0])
     q_g = x_g
 
@@ -285,9 +284,9 @@ def main():
                 sim_visualizer_bw = sim_mobile_robot( 'unicycle' )
             sim_visualizer_bw.set_field( [-7.5, 7.5], [-7.5, 7.5]) # set plot area
             sim_visualizer_bw.show_goal(q_g)
-            bw_obst = plt.Circle((q_t0), r_t0, color='r', fill=False)
+            bw_x_obst = plt.Circle((q_t0), r_t0, color='r', fill=False)
             bw_safe_set = plt.Circle((q0), r0_t0, color='b', fill=False)
-            sim_visualizer_bw.ax.add_patch(bw_obst)
+            sim_visualizer_bw.ax.add_patch(bw_x_obst)
             sim_visualizer_bw.ax.add_patch(bw_safe_set)
 
     state_history = np.zeros((100000, 2))
@@ -296,8 +295,8 @@ def main():
     step = 0
     while t < t_max and (sqrt((x[0]-x_g[0])**2 + (x[1]-x_g[1])**2) > 0.1):
         #print("x: ", x ,", x_g: ", x_g)
-        print(sqrt((x[0]-x_g[0])**2 + (x[1]-x_g[1])**2))
-        print(np.linalg.norm(x-x_g[0:1]))
+        # print(sqrt((x[0]-x_g[0])**2 + (x[1]-x_g[1])**2))
+        # print(np.linalg.norm(x-x_g[0:1]))
         
         state_history[step] = x
         state_history_q[step] = q
@@ -345,12 +344,12 @@ def main():
         bC0 = float(2*(q0-q) @ q_dot + gamma * h0)
 
         # C2
-        #hij = np.linalg.norm(qi-qj)**2 - (ri-rj)**2
-        #AC2 = matrix([[-2*(qi[0]-qj[0]), -2*(qi[1]-qj[1]), 2*(qi[0]-qj[0]), 2*(qi[1]-qj[1]), 2*(ri+rj), 2*(ri+rj)]]).T
-        #bC2 = gamma*hij
+        # hij = np.linalg.norm(qi-qj)**2 - (ri-rj)**2
+        # AC2 = matrix([[-2*(qi[0]-qj[0]), -2*(qi[1]-qj[1]), 2*(qi[0]-qj[0]), 2*(qi[1]-qj[1]), 2*(ri+rj), 2*(ri+rj)]]).T
+        # bC2 = gamma*hij
 
         # C3
-        #hi0 = (r0value-r)**2 - np.linalg.norm(qi-q0)**2
+        hi0 = (r0value-r)**2 - np.linalg.norm(qi-q0)**2
         hi0 = (r0value-r)**2 - sqrt((qi[0]-q0[0])**2 + (qi[1]-q0[1])**2)**2
         AC3 = matrix([[2*(qi[0]-q0[0]), 2*(qi[1]-q0[1]), 2*(r0value-r), -2*(r0value-r)]])
         bC3 = float(gamma*hi0)
@@ -396,8 +395,8 @@ def main():
         ux = x_dot[0]
         uy = x_dot[1]
 
-        print(f'ux:  {ux}')
-        print(f'uy:  {uy}')
+        # print(f'ux:  {ux}')
+        # print(f'uy:  {uy}')
         print(f'q_dotx:  {q_dot[0]}')
         print(f'q_doty:  {q_dot[1]}')
 
@@ -439,8 +438,8 @@ def main():
                 sim_visualizer_bw.update_time_stamp(t)
                 sim_visualizer_bw.update_goal( q_g )
                 sim_visualizer_bw.update_trajectory( state_history_q[:step+1] ) # up to the latest data
-                bw_obst.set_center(qi)
-                bw_obst.set_radius(r)
+                bw_x_obst.set_center(qi)
+                bw_x_obst.set_radius(r)
                 bw_safe_set.set_radius(r0value)
                 sim_visualizer_bw.fig.canvas.draw()
             plt.pause(0.000001)  
