@@ -27,8 +27,9 @@ def diffeomorphismOld(x_robot, x_obs, q_obs, r_obs, goal, lam):
     sigma_1 = gamma_d * beta_dash_1 / (gamma_d * beta_dash_1 + lam * beta_1)
 
     sigma_d = 1 - (sigma_0 + sigma_1)
+    pd = np.array([0., 0.])
 
-    h_lam = sigma_0 * (v0 * (x_robot - x_obs[0]) + q_obs[0]) + sigma_1 * (v1 * (x_robot - x_obs[1]) + q_obs[1]) + sigma_d * (x_robot - goal[:1] + goal[:1])
+    h_lam = sigma_0 * (v0 * (x_robot - x_obs[0]) + q_obs[0]) + sigma_1 * (v1 * (x_robot - x_obs[1]) + q_obs[1]) + sigma_d * (x_robot - goal[:1] + pd)
 
     return h_lam
 
@@ -88,11 +89,13 @@ def update_positions(x_initial, y_initial, xi, rho_i, qi, x_g):
     #x_g = np.array([2., 2.])
     #M = len(xi)
     M = 2
-    q_g = x_g
+    q_g = np.array([0., 0.])
+    #x_ = x_g
     x_updated = np.zeros((len(x_initial)))
     y_updated = np.zeros((len(y_initial)))
     for i in range(len(x_initial)):
         x_ = np.array([x_initial[i], y_initial[i]])
+        #x_ = x_g
         F = diffeomorphismF(M, x_, xi, x_g, rho_i, qi, q_g)
         x_updated[i] = F[0]
         y_updated[i] = F[1]
@@ -131,9 +134,9 @@ for i in range(grid_size**2):
     arrows.append(arrow)
 
 def update_plot(xi, scatter, scatter_old_paper, obstacle, arrows, x_g):
-    qi[1][0] += np.random.randn() * 0.1
-    qi[1][1] += -0.05 + np.random.randn() * 0.01
-    rho_i[1] += np.random.randn() * 0.1
+    #qi[1][0] += np.random.randn() * 0.1
+    #qi[1][1] += -0.05 + np.random.randn() * 0.01
+    #rho_i[1] += np.random.randn() * 0.1
     obstacle.set_radius(rho_i[1])
     x_updated, y_updated = update_positions(x_initial, y_initial, xi, rho_i, qi, x_g)
     #
@@ -141,10 +144,10 @@ def update_plot(xi, scatter, scatter_old_paper, obstacle, arrows, x_g):
     y_updated_old = np.zeros((len(y_initial)))
     for i in range(len(x_initial)):
         x_robot = np.array([x_initial[i], y_initial[i]])
+        #x_robot = x_g
         x_obs = np.array([xi[0], xi[1]])
         q_obs = np.array([qi[0], qi[1]])
         r_obs = rho_i
-        goal = x_g
         lam = 100
         f_old = diffeomorphismOld(x_robot, x_obs, q_obs, r_obs, x_g, lam)
         x_updated_old[i] = f_old[0]
