@@ -2,7 +2,6 @@ import numpy as np
 from numpy.linalg import norm
 import matplotlib.pyplot as plt
 from math import atan2, cos, sin, sqrt
-from sympy import *
 from cvxopt import solvers, matrix
 import time
 #from torch.autograd.functional import jacobian
@@ -198,8 +197,6 @@ def numerical_jacobian(x_robot, x_obst, q_radii, goal, lam):
     gradient_sigma_1 = (lam/((gamma_d*beta_dash_1+lam*beta_1)**2))*(beta_1 * gradient_gamma_d_beta_dash_1 - gamma_d*beta_dash_1*gradient_beta_1)
     
     
-    
-    
     J = (sigma_0 * v0 * np.eye(2) + sigma_0 * (x_robot - x_obst[0]) * gradient_v0.T + (v0 - 1) * (x_robot - x_obst[0]) * gradient_sigma_0.T +
          sigma_1 * v1 * np.eye(2) + sigma_1 * (x_robot - x_obst[1]) * gradient_v1.T + (v1 - 1) * (x_robot - x_obst[1]) * gradient_sigma_1.T) + sigma_d * np.eye(2)
 
@@ -225,7 +222,7 @@ def main():
     l = 0.06
     Kappa = 1
     gamma = 0.1
-    lam = 100
+    lam = 10
     q_t0 = np.array([.0, 1.0])
     r_t0 = 0.5
     t = 0.0
@@ -293,7 +290,7 @@ def main():
     state_history_q = np.zeros((100000, 2))
 
     step = 0
-    while t < t_max and (sqrt((x[0]-x_g[0])**2 + (x[1]-x_g[1])**2) > 0.1):
+    while t < t_max and (sqrt((x[0]-x_g[0])**2 + (x[1]-x_g[1])**2) > 0.3):
         #print("x: ", x ,", x_g: ", x_g)
         # print(sqrt((x[0]-x_g[0])**2 + (x[1]-x_g[1])**2))
         # print(np.linalg.norm(x-x_g[0:1]))
