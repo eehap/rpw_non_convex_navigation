@@ -74,7 +74,7 @@ def diffeomorphismF(M, x, xi, x_g, rho_i, qi, q_g):
     return F
 
 
-grid_size = 7
+grid_size = 1
 x_initial, y_initial = np.meshgrid(np.linspace(-2.5, 2.5, grid_size), np.linspace(-2.5, 2.5, grid_size))
 x_initial = x_initial.flatten()
 y_initial = y_initial.flatten()

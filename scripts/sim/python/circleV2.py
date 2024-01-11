@@ -27,6 +27,7 @@ def calculate_theta(x, xi):
 
 
 def diffeomorphismF(M, x, xi, x_g, rho_i, qi, q_g):
+    q_g = np.array([q_g[0], q_g[1]])
     x_g = np.array([x_g[0], x_g[1]])
     lam = 100
     a = 1
@@ -176,7 +177,7 @@ def main():
     x_obstacleCount = 1
     M = x_obstacleCount + 1
     x_g = np.array([-2, -1, 0.0])
-    q_g = x_g
+    q_g = np.array([-2, -1, 0.0])
 
 
     ux = Kp * (x_g[0] - x[0])
@@ -326,7 +327,8 @@ def main():
         t += Ts
 
         # 8
-        f = diffeomorphismF(M, np.array([q_g[0], q_g[1]]), xi, x_g, rho_i, qiF, np.array([q_g[0], q_g[1]]))
+        print(qiF)
+        f = diffeomorphismF(M, np.array([x_g[0], x_g[1]]), xi, x_g, rho_i, qiF, np.array([q_g[0], q_g[1]]))
         print(f)
         q_g[0] = f[0]
         q_g[1] = f[1]
