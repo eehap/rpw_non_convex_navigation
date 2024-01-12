@@ -222,7 +222,7 @@ def main():
     l = 0.06
     Kappa = 1
     gamma = 0.1
-    lam = 10
+    lam = 100
     q_t0 = np.array([.0, 1.0])
     r_t0 = 0.5
     t = 0.0
@@ -294,9 +294,6 @@ def main():
         #print("x: ", x ,", x_g: ", x_g)
         # print(sqrt((x[0]-x_g[0])**2 + (x[1]-x_g[1])**2))
         # print(np.linalg.norm(x-x_g[0:1]))
-        
-        state_history[step] = x
-        state_history_q[step] = q
 
         # 4 (INCOMPLETE)
 
@@ -425,21 +422,7 @@ def main():
             control_input_bw = np.array([vx_bw, wz_bw])
         
         # 9
-        if IS_SHOWING_2DVISUALIZATION: # Update Plot
-            if SIM_RW:
-                sim_visualizer.update_time_stamp(t)
-                sim_visualizer.update_goal( x_g )
-                sim_visualizer.fig.canvas.draw()  
-                sim_visualizer.update_trajectory( state_history[:step+1] ) # up to the latest data
-            if SIM_BOTH_WORLDS:
-                sim_visualizer_bw.update_time_stamp(t)
-                sim_visualizer_bw.update_goal( q_g )
-                sim_visualizer_bw.update_trajectory( state_history_q[:step+1] ) # up to the latest data
-                bw_x_obst.set_center(qi)
-                bw_x_obst.set_radius(r)
-                bw_safe_set.set_radius(r0value)
-                sim_visualizer_bw.fig.canvas.draw()
-            plt.pause(0.000001)  
+  
 
         # Update bw
         if OMNI:
@@ -462,6 +445,24 @@ def main():
             theta_robot = float(x_step[2])
             theta_robot = ( (theta_robot + np.pi) % (2*np.pi) ) - np.pi # ensure theta within [-pi pi]
 
+        state_history[step] = x
+        state_history_q[step] = q
+
+        if IS_SHOWING_2DVISUALIZATION: # Update Plot
+            if SIM_RW:
+                sim_visualizer.update_time_stamp(t)
+                sim_visualizer.update_goal( x_g )
+                sim_visualizer.fig.canvas.draw()  
+                sim_visualizer.update_trajectory( state_history[:step+1] ) # up to the latest data
+            if SIM_BOTH_WORLDS:
+                sim_visualizer_bw.update_time_stamp(t)
+                sim_visualizer_bw.update_goal( q_g )
+                sim_visualizer_bw.update_trajectory( state_history_q[:step+1] ) # up to the latest data
+                bw_x_obst.set_center(qi)
+                bw_x_obst.set_radius(r)
+                bw_safe_set.set_radius(r0value)
+                sim_visualizer_bw.fig.canvas.draw()
+            plt.pause(0.000001)
         step += 1
     plt.show()
 main()
