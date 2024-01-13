@@ -50,29 +50,28 @@ def main():
     # Constants and Settings
     Ts = 0.01 # Update simulation every 10ms
     t_max = 10.0 # total simulation duration in seconds
-    # Set initial state
     IS_SHOWING_2DVISUALIZATION = True
     MAX_ANGULAR_VEL = 2.84
     MAX_LINEAR_VEL = 0.5
-    SIM_RW = True
-    SIM_BOTH_WORLDS = True
-    OMNI = True
 
     field_x = (-2.5, 2.5)
     field_y = (-2.5, 2.5)
+    field_x_bw = (-2.5, 2.5)
+    field_y_bw = (-2.5, 2.5)
 
+    # Set initial state
     Kp = 1
     Kappa = 1
-    gamma = 1
+    gamma = 1000
     lam = 100
     q_obstacle_t0 = np.array([0.0, 1.0])
     t = 0.0
-    x_obstacle = np.array([0.0, 1.0])
-    q_obstacle = np.array([0.0, 1.0])
+    x_obstacle = np.array([0.0, 0.0])
+    q_obstacle = np.array([0.0, 0.0])
     x_bw = np.array([0.0, 0.0])
     q_bw = np.array([0.0, 0.0])
-    x_robot = np.array([2, 2])
-    q_robot = np.array([2, 2])
+    x_robot = np.array([2, 1])
+    q_robot = np.array([2, 1])
     r_obstacle = 0.5
     rho_obstacle = 0.5
     rho_obstacle_t0 = 0.5
@@ -114,24 +113,14 @@ def main():
                           x_bw_x, x_bw_y, q_bw_x, q_bw_y, x_goal_x, x_goal_y, q_goal_x, q_goal_y, rho_bw_sym, rho_obstacle_sym], J22, "numpy")
 
     if IS_SHOWING_2DVISUALIZATION: # Initialize Plot
-        if SIM_RW:
-            if OMNI: 
-                sim_visualizer = sim_mobile_robot( 'omnidirectional', 1)
-            else: 
-                sim_visualizer = sim_mobile_robot( 'unicycle' )
+            sim_visualizer = sim_mobile_robot( 'omnidirectional', 1)
             sim_visualizer.set_field( field_x, field_y ) # set plot area
             sim_visualizer.show_goal(x_goal)
-            x_values = np.linspace(-5, 5, 100)
-            y_values = np.linspace(-5, 5, 100)
-            # sim_visualizer.ax.contour(x_mesh, y_mesh, beta_values, levels=[0], colors='r')
             sim_visualizer.ax.add_patch(plt.Circle(([x_obstacle[0], x_obstacle[1]]), rho_obstacle_t0))
 
-        if SIM_BOTH_WORLDS:
-            if OMNI:
-                sim_visualizer_bw = sim_mobile_robot( 'omnidirectional', 2)
-            else: 
-                sim_visualizer_bw = sim_mobile_robot( 'unicycle' )
-            sim_visualizer_bw.set_field( [-7.5, 7.5], [-7.5, 7.5]) # set plot area
+            # Ball world sim
+            sim_visualizer_bw = sim_mobile_robot( 'omnidirectional', 2)
+            sim_visualizer_bw.set_field( field_x_bw, field_y_bw) # set plot area
             sim_visualizer_bw.show_goal(q_goal)
             bw_x_obst = plt.Circle((q_obstacle_t0), rho_obstacle_t0, color='r', fill=False)
             bw_safe_set = plt.Circle((q_bw), rho_bw_t0, color='b', fill=False)
@@ -141,36 +130,22 @@ def main():
     state_history = np.zeros((100000, 2))
     state_history_q = np.zeros((100000, 2))
 
-    
-
     k = 0
     while t < t_max and (sqrt((x_robot[0]-x_goal[0])**2 + (x_robot[1]-x_goal[1])**2) > 0.1):
-        state_history[k] = x_robot
-        state_history_q[k] = q_robot
-
         # 3
-
-        k += 1
         print('kierros', k)
 
         # 4
-
         J11s = J11_lambd(x_robot[0], x_robot[1], x_obstacle[0], x_obstacle[1], q_obstacle[0], q_obstacle[1], x_bw[0], x_bw[1],
-                         q_bw[0], q_bw[1], x_goal[0], x_goal[1], q_goal[0], q_goal[1], rho_bw, rho_obstacle)
+                            q_bw[0], q_bw[1], x_goal[0], x_goal[1], q_goal[0], q_goal[1], rho_bw, rho_obstacle)
         J12s = J12_lambd(x_robot[0], x_robot[1], x_obstacle[0], x_obstacle[1], q_obstacle[0], q_obstacle[1], x_bw[0], x_bw[1],
-                         q_bw[0], q_bw[1], x_goal[0], x_goal[1], q_goal[0], q_goal[1], rho_bw, rho_obstacle)
+                            q_bw[0], q_bw[1], x_goal[0], x_goal[1], q_goal[0], q_goal[1], rho_bw, rho_obstacle)
         J21s = J21_lambd(x_robot[0], x_robot[1], x_obstacle[0], x_obstacle[1], q_obstacle[0], q_obstacle[1], x_bw[0], x_bw[1],
-                         q_bw[0], q_bw[1], x_goal[0], x_goal[1], q_goal[0], q_goal[1], rho_bw, rho_obstacle)
+                            q_bw[0], q_bw[1], x_goal[0], x_goal[1], q_goal[0], q_goal[1], rho_bw, rho_obstacle)
         J22s = J22_lambd(x_robot[0], x_robot[1], x_obstacle[0], x_obstacle[1], q_obstacle[0], q_obstacle[1], x_bw[0], x_bw[1],
-                         q_bw[0], q_bw[1], x_goal[0], x_goal[1], q_goal[0], q_goal[1], rho_bw, rho_obstacle)
-        
-        #ux = Kp * (x_goal[0] - x_robot[0])
-        #uy = Kp * (x_goal[1] - x_robot[1])
+                            q_bw[0], q_bw[1], x_goal[0], x_goal[1], q_goal[0], q_goal[1], rho_bw, rho_obstacle)
         
         q_dot = np.array([J11s*ux+J12s*uy, J21s*ux+J22s*uy])
-
-        print(f'Goal point {np.array([J11s*x_goal[0]+J12s*x_goal[1], J21s*x_goal[0]+J22s*x_goal[1]])}')
-
         # 5
 
         u_hat_q_obstacle = Kp*(q_obstacle_t0-q_obstacle)
@@ -208,11 +183,6 @@ def main():
         solvers.options['show_progress'] = False
         sol = solvers.qp(Q, c, G, h, verbose=False)
 
-        u_star_qx = sol['x'][0]
-        u_star_qy = sol['x'][1]
-        u_star_r = sol['x'][2]
-        u_star_r0 = sol['x'][3]
-
         u_star_q_obstacle_x = sol['x'][0]
         u_star_q_obstacle_y = sol['x'][1]
         u_star_rho_obstacle = sol['x'][2]
@@ -222,7 +192,7 @@ def main():
 
         q_obstacle[0] += u_star_q_obstacle_x*Ts
         q_obstacle[1] += u_star_q_obstacle_y*Ts
-        rho_obstacle += u_star_rho_obstacle*Ts
+        rho_obstacle += u_star_rho_obstacle*Ts  
         rho_bw += u_star_rho_bw*Ts
         t += Ts
 
@@ -245,48 +215,36 @@ def main():
 
         ux = x_dot[0]
         uy = x_dot[1]
+
         print(f'ux:  {ux}')
         print(f'uy:  {uy}')
 
         control_input = np.array([ux, uy])
         control_input_bw = np.array([q_dot[0], q_dot[1]])
 
-        if IS_SHOWING_2DVISUALIZATION: # Update Plot
-            if SIM_RW:
-                sim_visualizer.update_time_stamp(t)
-                sim_visualizer.update_goal(x_goal)
-                sim_visualizer.fig.canvas.draw()  
-                sim_visualizer.update_trajectory(state_history[:k+1]) # up to the latest data
-            if SIM_BOTH_WORLDS:
-                sim_visualizer_bw.update_time_stamp(t)
-                sim_visualizer_bw.update_goal(q_goal)
-                sim_visualizer_bw.update_trajectory(state_history_q[:k+1]) # up to the latest data
-                bw_x_obst.set_center(q_obstacle)
-                bw_x_obst.set_radius(rho_obstacle)
-                bw_safe_set.set_radius(rho_bw)
-                sim_visualizer_bw.fig.canvas.draw()
-            plt.pause(0.000001)  
+        x_robot = x_robot + Ts*control_input
+        q_robot = q_robot + Ts*control_input_bw
 
-        # Update bw
-        if OMNI:
-            x_robot = x_robot + Ts*control_input
-            q_robot = q_robot + Ts*control_input_bw
-            x_robot = x_robot.astype(np.float64)
-            q_robot = q_robot.astype(np.float64)
-    
-        else:
-            B = np.array([[np.cos(theta_robot_bw), 0], [np.sin(theta_robot_bw), 0], [0, 1]])
-            q_step = Ts*(B @ control_input_bw)
-            q_robot = q_robot + q_step[:1] # will be used in the next iteration
-            theta_robot_bw = float(q_step[2])
-            theta_robot_bw = ( (theta_robot_bw  + np.pi) % (2*np.pi) ) - np.pi # ensure theta within [-pi pi]
-        # Update rw
- 
-            B = np.array([[np.cos(theta_robot), 0], [np.sin(theta_robot), 0], [0, 1]])
-            x_step = Ts*(B @ control_input) # will be used in the next iteration
-            x_robot = x_robot + x_step[:1]
-            theta_robot = float(x_step[2])
-            theta_robot = ( (theta_robot + np.pi) % (2*np.pi) ) - np.pi # ensure theta within [-pi pi]
+        state_history[k] = x_robot
+        state_history_q[k] = q_robot
+
+        if IS_SHOWING_2DVISUALIZATION: # Update Plot
+            sim_visualizer.update_time_stamp(t)
+            sim_visualizer.update_goal(x_goal)
+            sim_visualizer.fig.canvas.draw()  
+            sim_visualizer.update_trajectory(state_history[:k+1]) # up to the latest data
+
+            sim_visualizer_bw.update_time_stamp(t)
+            sim_visualizer_bw.update_goal(q_goal)
+            sim_visualizer_bw.update_trajectory(state_history_q[:k+1]) # up to the latest data
+            bw_x_obst.set_center(q_obstacle)
+            bw_x_obst.set_radius(rho_obstacle)
+            bw_safe_set.set_radius(rho_bw)
+            sim_visualizer_bw.fig.canvas.draw()
+            plt.pause(0.000001)  
+        
+        k += 1
+
     
     plt.show()
 
