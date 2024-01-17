@@ -45,7 +45,7 @@ def jacobianOriginal(r_obstacle, r_bw, lam):
     J = [J11, J12, J21, J22]
     return J
 
-def diffemorphism(x_robot, x_bw, r_bw, x_obstacle, r_obstacle, q_obstacle, rho_bw, rho_obstacle, x_goal, q_goal, lam):
+def diffeomorphism(x_robot, x_bw, r_bw, x_obstacle, r_obstacle, q_obstacle, rho_bw, rho_obstacle, x_goal, q_goal, lam):
     theta0 = atan2(x_robot[1]-x_bw[1], x_robot[0]-x_bw[0])
     theta1 = atan2(x_robot[1]-x_obstacle[1], x_robot[0]-x_obstacle[0])
     beta0 = rho_bw**2 - (sqrt((x_robot[0]-x_bw[0])**2 + (x_robot[1]-x_bw[1])**2))**2
@@ -106,7 +106,7 @@ def main():
     x_goal = np.array([-2., -1., 0.0])
     q_goal = np.array([-2., -1., 0.0])
 
-    F = diffemorphism(x_robot, x_bw, r_bw, x_obstacle, r_obstacle, q_obstacle, rho_bw, rho_obstacle, x_goal, q_goal, lam)
+    F = diffeomorphism(x_robot, x_bw, r_bw, x_obstacle, r_obstacle, q_obstacle, rho_bw, rho_obstacle, x_goal, q_goal, lam)
     q_robot[0] = F[0]
     q_robot[1] = F[1]
 
@@ -264,7 +264,7 @@ def main():
         control_input_bw = np.array([q_dot[0], q_dot[1]])
 
         x_robot = x_robot + Ts*control_input
-        F = diffemorphism(x_robot, x_bw, r_bw, x_obstacle, r_obstacle, q_obstacle, rho_bw, rho_obstacle, x_goal, q_goal, lam)
+        F = diffeomorphism(x_robot, x_bw, r_bw, x_obstacle, r_obstacle, q_obstacle, rho_bw, rho_obstacle, x_goal, q_goal, lam)
         q_robot[0] = F[0]
         q_robot[1] = F[1]
     
