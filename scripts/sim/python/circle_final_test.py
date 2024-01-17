@@ -45,6 +45,27 @@ def jacobianOriginal(r_obstacle, r_bw, lam):
     J = [J11, J12, J21, J22]
     return J
 
+def diffemorphism(x_robot, x_bw, r_bw, x_obstacle, r_obstacle, q_obstacle, rho_bw, rho_obstacle, x_goal, q_goal, lam):
+    theta0 = atan2(x_robot[1]-x_bw[1], x_robot[0]-x_bw[0])
+    theta1 = atan2(x_robot[1]-x_obstacle[1], x_robot[0]-x_obstacle[0])
+    beta0 = rho_bw**2 - (sqrt((x_robot[0]-x_bw[0])**2 + (x_robot[1]-x_bw[1])**2))**2
+    beta1 = (sqrt((x_robot[0]-x_obstacle[0])**2 + (x_robot[1]-x_obstacle[1])**2))**2 - rho_obstacle**2
+    beta_dash0 = beta1
+    beta_dash1 = beta0
+    gamma_g = (sqrt((x_robot[0]-x_goal[0])**2 + (x_robot[1]-x_goal[1])**2))**2
+    sigma0 = (gamma_g*beta_dash0)/(gamma_g*beta_dash0+lam*beta0)
+    sigma1 = (gamma_g*beta_dash1)/(gamma_g*beta_dash1+lam*beta1)
+    sigma_g = 1 - (sigma0+sigma1)
+    f0 = (sqrt((x_robot[0]-x_bw[0])**2 + (x_robot[1]-x_bw[1])**2))/(r_bw) * np.array([cos(theta0), sin(theta0)]).T
+    f1 = (sqrt((x_robot[0]-x_obstacle[0])**2 + (x_robot[1]-x_obstacle[1])**2))/(r_obstacle) * np.array([cos(theta1), sin(theta1)]).T
+    
+    Fx = sigma0*(rho_bw*f0 + np.array([x_bw[0], x_bw[1]]))
+    Fx += sigma1*(rho_obstacle*f1 + np.array([q_obstacle[0], q_obstacle[1]]))
+    Fx += sigma_g*(np.array([x_robot[0], x_robot[1]]) - np.array([x_goal[0], x_goal[1]]) + np.array([q_goal[0], q_goal[1]]))
+    
+    print(Fx)
+    return Fx
+
 
 def main():
     # Constants and Settings
@@ -56,22 +77,23 @@ def main():
 
     field_x = (-2.5, 2.5)
     field_y = (-2.5, 2.5)
-    field_x_bw = (-2.5, 2.5)
-    field_y_bw = (-2.5, 2.5)
+    field_x_bw = (-7.5, 7.5)
+    field_y_bw = (-7.5, 7.5)
 
     # Set initial state
-    Kp = 1
-    Kappa = 1
+    Kp = 10
+    K_gtg = 1
+    Kappa = 10
     gamma = 1000
-    lam = 100
-    q_obstacle_t0 = np.array([0.0, 1.0])
+    lam = 1000
+    q_obstacle_t0 = np.array([0.5, 0.5])
     t = 0.0
-    x_obstacle = np.array([0.0, 0.0])
-    q_obstacle = np.array([0.0, 0.0])
+    x_obstacle = np.array([0.5, 0.5])
+    q_obstacle = np.array([0.5, 0.5])
     x_bw = np.array([0.0, 0.0])
     q_bw = np.array([0.0, 0.0])
-    x_robot = np.array([2, 1])
-    q_robot = np.array([2, 1])
+    x_robot = np.array([2.0, 1.0])
+    q_robot = np.array([0.0, 0.0])
     r_obstacle = 0.5
     rho_obstacle = 0.5
     rho_obstacle_t0 = 0.5
@@ -84,9 +106,13 @@ def main():
     x_goal = np.array([-2., -1., 0.0])
     q_goal = np.array([-2., -1., 0.0])
 
-    ux = Kp * (x_goal[0] - x_robot[0])
-    uy = Kp * (x_goal[1] - x_robot[1])
-    
+    F = diffemorphism(x_robot, x_bw, r_bw, x_obstacle, r_obstacle, q_obstacle, rho_bw, rho_obstacle, x_goal, q_goal, lam)
+    q_robot[0] = F[0]
+    q_robot[1] = F[1]
+
+    ux = K_gtg * (x_goal[0] - x_robot[0])
+    uy = K_gtg * (x_goal[1] - x_robot[1])
+
     # Robot x and y coordinates
     x_robot_x, x_robot_y = symbols('x_robot_x x_robot_y')
     # Obstacle x and y coordinates
@@ -131,9 +157,16 @@ def main():
     state_history_q = np.zeros((100000, 2))
 
     k = 0
-    while t < t_max and (sqrt((x_robot[0]-x_goal[0])**2 + (x_robot[1]-x_goal[1])**2) > 0.1):
-        # 3
+    while t < t_max:
+
+        # 3 
         print('kierros', k)
+
+        ux = K_gtg * (x_goal[0] - x_robot[0])
+        uy = K_gtg * (x_goal[1] - x_robot[1])
+        x_dot = np.array([ux, uy])
+        norm_vel = np.hypot(x_dot[0], x_dot[1])
+        if norm_vel > MAX_LINEAR_VEL: x_dot = MAX_LINEAR_VEL* x_dot / norm_vel
 
         # 4
         J11s = J11_lambd(x_robot[0], x_robot[1], x_obstacle[0], x_obstacle[1], q_obstacle[0], q_obstacle[1], x_bw[0], x_bw[1],
@@ -145,7 +178,8 @@ def main():
         J22s = J22_lambd(x_robot[0], x_robot[1], x_obstacle[0], x_obstacle[1], q_obstacle[0], q_obstacle[1], x_bw[0], x_bw[1],
                             q_bw[0], q_bw[1], x_goal[0], x_goal[1], q_goal[0], q_goal[1], rho_bw, rho_obstacle)
         
-        q_dot = np.array([J11s*ux+J12s*uy, J21s*ux+J22s*uy])
+        q_dot = np.array([J11s*x_dot[0]+J12s*x_dot[1], J21s*x_dot[0]+J22s*x_dot[1]])
+
         # 5
 
         u_hat_q_obstacle = Kp*(q_obstacle_t0-q_obstacle)
@@ -196,34 +230,44 @@ def main():
         rho_bw += u_star_rho_bw*Ts
         t += Ts
 
+
         # 8
 
-        J11s = J11_lambd(x_robot[0], x_robot[1], x_obstacle[0], x_obstacle[1], q_obstacle[0], q_obstacle[1], x_bw[0], x_bw[1],
+        J11s = J11_lambd(q_robot[0], x_robot[1], x_obstacle[0], x_obstacle[1], q_obstacle[0], q_obstacle[1], x_bw[0], x_bw[1],
                          q_bw[0], q_bw[1], x_goal[0], x_goal[1], q_goal[0], q_goal[1], rho_bw, rho_obstacle)
-        J12s = J12_lambd(x_robot[0], x_robot[1], x_obstacle[0], x_obstacle[1], q_obstacle[0], q_obstacle[1], x_bw[0], x_bw[1],
+        J12s = J12_lambd(q_robot[0], x_robot[1], x_obstacle[0], x_obstacle[1], q_obstacle[0], q_obstacle[1], x_bw[0], x_bw[1],
                          q_bw[0], q_bw[1], x_goal[0], x_goal[1], q_goal[0], q_goal[1], rho_bw, rho_obstacle)
-        J21s = J21_lambd(x_robot[0], x_robot[1], x_obstacle[0], x_obstacle[1], q_obstacle[0], q_obstacle[1], x_bw[0], x_bw[1],
+        J21s = J21_lambd(q_robot[0], x_robot[1], x_obstacle[0], x_obstacle[1], q_obstacle[0], q_obstacle[1], x_bw[0], x_bw[1],
                          q_bw[0], q_bw[1], x_goal[0], x_goal[1], q_goal[0], q_goal[1], rho_bw, rho_obstacle)
-        J22s = J22_lambd(x_robot[0], x_robot[1], x_obstacle[0], x_obstacle[1], q_obstacle[0], q_obstacle[1], x_bw[0], x_bw[1],
+        J22s = J22_lambd(q_robot[0], x_robot[1], x_obstacle[0], x_obstacle[1], q_obstacle[0], q_obstacle[1], x_bw[0], x_bw[1],
                          q_bw[0], q_bw[1], x_goal[0], x_goal[1], q_goal[0], q_goal[1], rho_bw, rho_obstacle)
         
         jacobian = np.array([[J11s, J12s], [J21s, J22s]], dtype=float)
         inv_jacobian = np.linalg.inv(jacobian)
         x_dot = inv_jacobian @ q_dot
 
+        print(f'x_dot: {x_dot}')
+        print(f'gtg x: {ux}, gtg y: {uy}')
+
         # 9 (Incomplete?)
+        norm_vel = np.hypot(x_dot[0], x_dot[1])
+        if norm_vel > MAX_LINEAR_VEL: x_dot = MAX_LINEAR_VEL* x_dot / norm_vel
+
 
         ux = x_dot[0]
         uy = x_dot[1]
 
-        print(f'ux:  {ux}')
-        print(f'uy:  {uy}')
+        # print(f'ux:  {ux}')
+        # print(f'uy:  {uy}')
 
         control_input = np.array([ux, uy])
         control_input_bw = np.array([q_dot[0], q_dot[1]])
 
         x_robot = x_robot + Ts*control_input
-        q_robot = q_robot + Ts*control_input_bw
+        F = diffemorphism(x_robot, x_bw, r_bw, x_obstacle, r_obstacle, q_obstacle, rho_bw, rho_obstacle, x_goal, q_goal, lam)
+        q_robot[0] = F[0]
+        q_robot[1] = F[1]
+    
 
         state_history[k] = x_robot
         state_history_q[k] = q_robot
