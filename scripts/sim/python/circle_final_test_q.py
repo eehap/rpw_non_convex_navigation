@@ -9,7 +9,7 @@ import time
 from library.visualize_mobile_robot import sim_mobile_robot
 
 
-def diffeomorphism(x_robot, x_bw, x_obstacle, rho_bw, rho_obstacle, x_goal, q_goal, q_obstacle, q_bw, r_obstacle, r_bw, lam):
+def diffeomorphism(x_robot, x_bw, r_bw, x_obstacle, r_obstacle, q_obstacle, rho_bw, rho_obstacle, x_goal, q_goal, lam):
     theta0 = atan2(x_robot[1]-x_bw[1], x_robot[0]-x_bw[0])
     theta1 = atan2(x_robot[1]-x_obstacle[1], x_robot[0]-x_obstacle[0])
     beta0 = rho_bw**2 - (sqrt((x_robot[0]-x_bw[0])**2 + (x_robot[1]-x_bw[1])**2))**2
@@ -22,8 +22,7 @@ def diffeomorphism(x_robot, x_bw, x_obstacle, rho_bw, rho_obstacle, x_goal, q_go
     sigma_g = 1 - (sigma0+sigma1)
     f0 = (sqrt((x_robot[0]-x_bw[0])**2 + (x_robot[1]-x_bw[1])**2))/(r_bw) * np.array([cos(theta0), sin(theta0)]).T
     f1 = (sqrt((x_robot[0]-x_obstacle[0])**2 + (x_robot[1]-x_obstacle[1])**2))/(r_obstacle) * np.array([cos(theta1), sin(theta1)]).T
-    
-    Fx = sigma0*(rho_bw*f0 + np.array([q_bw[0], q_bw[1]]))
+    Fx = sigma0*(rho_bw*f0 + np.array([x_bw[0], x_bw[1]]))
     Fx += sigma1*(rho_obstacle*f1 + np.array([q_obstacle[0], q_obstacle[1]]))
     Fx += sigma_g*(np.array([x_robot[0], x_robot[1]]) - np.array([x_goal[0], x_goal[1]]) + np.array([q_goal[0], q_goal[1]]))
     return Fx
@@ -74,6 +73,7 @@ def main():
     MAX_ANGULAR_VEL = 2.84
     MAX_LINEAR_VEL = 0.5
     USE_CONDITIONAL_GTG = False
+    H = 10 ** -6
 
     field_x = (-2.5, 2.5)
     field_y = (-2.5, 2.5)
@@ -91,8 +91,8 @@ def main():
     q_obstacle = np.array([0.0, 0.0])
     x_bw = np.array([0.0, 0.0])
     q_bw = np.array([0.0, 0.0])
-    x_robot = np.array([2, 1])
-    q_robot = np.array([2, 1])
+    x_robot = np.array([2., 1.])
+    q_robot = np.array([2., 1.])
     r_obstacle = 0.5
     rho_obstacle = 0.5
     rho_obstacle_t0 = 0.5
@@ -105,6 +105,10 @@ def main():
     r_robot = 0.1
     x_goal = np.array([-2., -1., 0.0])
     q_goal = np.array([-2., -1., 0.0])
+
+    F = diffeomorphism(x_robot, x_bw, r_bw, x_obstacle, r_obstacle, q_obstacle, rho_bw, rho_obstacle, x_goal, q_goal, lam)
+    q_robot[0] = F[0]
+    q_robot[1] = F[1]
 
     ux = Kp * (x_goal[0] - x_robot[0])
     uy = Kp * (x_goal[1] - x_robot[1])
@@ -164,16 +168,28 @@ def main():
             uy = Kp * (x_goal[1] - x_robot[1])
 
         # 4
+            
         J11s = J11_lambd(x_robot[0], x_robot[1], x_obstacle[0], x_obstacle[1], q_obstacle[0], q_obstacle[1], x_bw[0], x_bw[1],
-                            q_bw[0], q_bw[1], x_goal[0], x_goal[1], q_goal[0], q_goal[1], rho_bw, rho_obstacle)
+                           q_bw[0], q_bw[1], x_goal[0], x_goal[1], q_goal[0], q_goal[1], rho_bw, rho_obstacle)
         J12s = J12_lambd(x_robot[0], x_robot[1], x_obstacle[0], x_obstacle[1], q_obstacle[0], q_obstacle[1], x_bw[0], x_bw[1],
-                            q_bw[0], q_bw[1], x_goal[0], x_goal[1], q_goal[0], q_goal[1], rho_bw, rho_obstacle)
+                           q_bw[0], q_bw[1], x_goal[0], x_goal[1], q_goal[0], q_goal[1], rho_bw, rho_obstacle)
         J21s = J21_lambd(x_robot[0], x_robot[1], x_obstacle[0], x_obstacle[1], q_obstacle[0], q_obstacle[1], x_bw[0], x_bw[1],
-                            q_bw[0], q_bw[1], x_goal[0], x_goal[1], q_goal[0], q_goal[1], rho_bw, rho_obstacle)
+                           q_bw[0], q_bw[1], x_goal[0], x_goal[1], q_goal[0], q_goal[1], rho_bw, rho_obstacle)
         J22s = J22_lambd(x_robot[0], x_robot[1], x_obstacle[0], x_obstacle[1], q_obstacle[0], q_obstacle[1], x_bw[0], x_bw[1],
-                            q_bw[0], q_bw[1], x_goal[0], x_goal[1], q_goal[0], q_goal[1], rho_bw, rho_obstacle)
+                           q_bw[0], q_bw[1], x_goal[0], x_goal[1], q_goal[0], q_goal[1], rho_bw, rho_obstacle)
+        
+        # x_h = np.array([x_robot[0]+H, x_robot[1]])
+        # y_h = np.array([x_robot[0], x_robot[1]+H])
+        # Fx = diffeomorphism(x_h, x_bw, r_bw, x_obstacle, r_obstacle, q_obstacle, rho_bw, rho_obstacle, x_goal, q_goal, lam)
+        # Fy = diffeomorphism(y_h, x_bw, r_bw, x_obstacle, r_obstacle, q_obstacle, rho_bw, rho_obstacle, x_goal, q_goal, lam)
+        # F = diffeomorphism(x_robot, x_bw, r_bw, x_obstacle, r_obstacle, q_obstacle, rho_bw, rho_obstacle, x_goal, q_goal, lam)
+        # J11s = float((Fx[0]-F[0])/H)
+        # J12s = float((Fy[0]-F[0])/H)
+        # J21s = float((Fx[1]-F[1])/H)
+        # J22s = float((Fy[1]-F[1])/H)
         
         q_dot = np.array([J11s*ux+J12s*uy, J21s*ux+J22s*uy])
+
         # 5
 
         u_hat_q_obstacle = Kp*(q_obstacle_t0-q_obstacle)
@@ -235,11 +251,24 @@ def main():
         J22s = J22_lambd(q_robot[0], x_robot[1], x_obstacle[0], x_obstacle[1], q_obstacle[0], q_obstacle[1], x_bw[0], x_bw[1],
                          q_bw[0], q_bw[1], x_goal[0], x_goal[1], q_goal[0], q_goal[1], rho_bw, rho_obstacle)
         
+        # qx_h = np.array([q_robot[0]+H, q_robot[1]])
+        # qy_h = np.array([q_robot[0], q_robot[1]+H])
+        # Fx = diffeomorphism(qx_h, x_bw, r_bw, x_obstacle, r_obstacle, q_obstacle, rho_bw, rho_obstacle, x_goal, q_goal, lam)
+        # Fy = diffeomorphism(qy_h, x_bw, r_bw, x_obstacle, r_obstacle, q_obstacle, rho_bw, rho_obstacle, x_goal, q_goal, lam)
+        # F = diffeomorphism(q_robot, x_bw, r_bw, x_obstacle, r_obstacle, q_obstacle, rho_bw, rho_obstacle, x_goal, q_goal, lam)
+        # J11s = float((Fx[0]-F[1])/H)
+        # J12s = float((Fy[0]-F[1])/H)
+        # J21s = float((Fx[1]-F[1])/H)
+        # J22s = float((Fy[1]-F[1])/H)
+        
         jacobian = np.array([[J11s, J12s], [J21s, J22s]], dtype=float)
         inv_jacobian = np.linalg.inv(jacobian)
         x_dot = inv_jacobian @ q_dot
 
         # 9 (Incomplete?)
+
+        #norm_vel = np.hypot(x_dot[0], x_dot[1])
+        #if norm_vel > MAX_LINEAR_VEL: x_dot = MAX_LINEAR_VEL* x_dot / norm_vel
 
         ux = x_dot[0]
         uy = x_dot[1]
@@ -251,10 +280,10 @@ def main():
         control_input_bw = np.array([q_dot[0], q_dot[1]])
 
         x_robot = x_robot + Ts*control_input
-        #Fx = diffeomorphism(x_robot, x_bw, x_obstacle, rho_bw, rho_obstacle, x_goal, q_goal, q_obstacle, q_bw, r_obstacle, r_bw, lam)
+        #F = diffeomorphism(x_robot, x_bw, r_bw, x_obstacle, r_obstacle, q_obstacle, rho_bw, rho_obstacle, x_goal, q_goal, lam)
+        #q_robot[0] = F[0]
+        #q_robot[1] = F[1]
         q_robot = q_robot + Ts*control_input_bw
-        #q_robot[0] = Fx[0]
-        #q_robot[1] = Fx[1]
 
         state_history[k] = x_robot
         state_history_q[k] = q_robot
