@@ -74,6 +74,7 @@ def main():
     IS_SHOWING_2DVISUALIZATION = True
     MAX_ANGULAR_VEL = 2.84
     MAX_LINEAR_VEL = 0.5
+    H = 10 ** -6
 
     field_x = (-2.5, 2.5)
     field_y = (-2.5, 2.5)
@@ -169,14 +170,25 @@ def main():
         if norm_vel > MAX_LINEAR_VEL: x_dot = MAX_LINEAR_VEL* x_dot / norm_vel
 
         # 4
-        J11s = J11_lambd(x_robot[0], x_robot[1], x_obstacle[0], x_obstacle[1], q_obstacle[0], q_obstacle[1], x_bw[0], x_bw[1],
-                            q_bw[0], q_bw[1], x_goal[0], x_goal[1], q_goal[0], q_goal[1], rho_bw, rho_obstacle)
-        J12s = J12_lambd(x_robot[0], x_robot[1], x_obstacle[0], x_obstacle[1], q_obstacle[0], q_obstacle[1], x_bw[0], x_bw[1],
-                            q_bw[0], q_bw[1], x_goal[0], x_goal[1], q_goal[0], q_goal[1], rho_bw, rho_obstacle)
-        J21s = J21_lambd(x_robot[0], x_robot[1], x_obstacle[0], x_obstacle[1], q_obstacle[0], q_obstacle[1], x_bw[0], x_bw[1],
-                            q_bw[0], q_bw[1], x_goal[0], x_goal[1], q_goal[0], q_goal[1], rho_bw, rho_obstacle)
-        J22s = J22_lambd(x_robot[0], x_robot[1], x_obstacle[0], x_obstacle[1], q_obstacle[0], q_obstacle[1], x_bw[0], x_bw[1],
-                            q_bw[0], q_bw[1], x_goal[0], x_goal[1], q_goal[0], q_goal[1], rho_bw, rho_obstacle)
+
+        # J11s = J11_lambd(x_robot[0], x_robot[1], x_obstacle[0], x_obstacle[1], q_obstacle[0], q_obstacle[1], x_bw[0], x_bw[1],
+        #                     q_bw[0], q_bw[1], x_goal[0], x_goal[1], q_goal[0], q_goal[1], rho_bw, rho_obstacle)
+        # J12s = J12_lambd(x_robot[0], x_robot[1], x_obstacle[0], x_obstacle[1], q_obstacle[0], q_obstacle[1], x_bw[0], x_bw[1],
+        #                     q_bw[0], q_bw[1], x_goal[0], x_goal[1], q_goal[0], q_goal[1], rho_bw, rho_obstacle)
+        # J21s = J21_lambd(x_robot[0], x_robot[1], x_obstacle[0], x_obstacle[1], q_obstacle[0], q_obstacle[1], x_bw[0], x_bw[1],
+        #                     q_bw[0], q_bw[1], x_goal[0], x_goal[1], q_goal[0], q_goal[1], rho_bw, rho_obstacle)
+        # J22s = J22_lambd(x_robot[0], x_robot[1], x_obstacle[0], x_obstacle[1], q_obstacle[0], q_obstacle[1], x_bw[0], x_bw[1],
+        #                     q_bw[0], q_bw[1], x_goal[0], x_goal[1], q_goal[0], q_goal[1], rho_bw, rho_obstacle)
+        
+        x_h = np.array([x_robot[0]+H, x_robot[1]])
+        y_h = np.array([x_robot[0], x_robot[1]+H])
+        Fx = diffeomorphism(x_h, x_bw, r_bw, x_obstacle, r_obstacle, q_obstacle, rho_bw, rho_obstacle, x_goal, q_goal, lam)
+        Fy = diffeomorphism(y_h, x_bw, r_bw, x_obstacle, r_obstacle, q_obstacle, rho_bw, rho_obstacle, x_goal, q_goal, lam)
+        F = diffeomorphism(x_robot, x_bw, r_bw, x_obstacle, r_obstacle, q_obstacle, rho_bw, rho_obstacle, x_goal, q_goal, lam)
+        J11s = float((Fx[0]-F[0])/H)
+        J12s = float((Fy[0]-F[0])/H)
+        J21s = float((Fx[1]-F[1])/H)
+        J22s = float((Fy[1]-F[1])/H)
         
         q_dot = np.array([J11s*x_dot[0]+J12s*x_dot[1], J21s*x_dot[0]+J22s*x_dot[1]])
 
@@ -230,17 +242,26 @@ def main():
         rho_bw += u_star_rho_bw*Ts
         t += Ts
 
-
         # 8
 
-        J11s = J11_lambd(q_robot[0], x_robot[1], x_obstacle[0], x_obstacle[1], q_obstacle[0], q_obstacle[1], x_bw[0], x_bw[1],
-                         q_bw[0], q_bw[1], x_goal[0], x_goal[1], q_goal[0], q_goal[1], rho_bw, rho_obstacle)
-        J12s = J12_lambd(q_robot[0], x_robot[1], x_obstacle[0], x_obstacle[1], q_obstacle[0], q_obstacle[1], x_bw[0], x_bw[1],
-                         q_bw[0], q_bw[1], x_goal[0], x_goal[1], q_goal[0], q_goal[1], rho_bw, rho_obstacle)
-        J21s = J21_lambd(q_robot[0], x_robot[1], x_obstacle[0], x_obstacle[1], q_obstacle[0], q_obstacle[1], x_bw[0], x_bw[1],
-                         q_bw[0], q_bw[1], x_goal[0], x_goal[1], q_goal[0], q_goal[1], rho_bw, rho_obstacle)
-        J22s = J22_lambd(q_robot[0], x_robot[1], x_obstacle[0], x_obstacle[1], q_obstacle[0], q_obstacle[1], x_bw[0], x_bw[1],
-                         q_bw[0], q_bw[1], x_goal[0], x_goal[1], q_goal[0], q_goal[1], rho_bw, rho_obstacle)
+        # J11s = J11_lambd(q_robot[0], x_robot[1], x_obstacle[0], x_obstacle[1], q_obstacle[0], q_obstacle[1], x_bw[0], x_bw[1],
+        #                  q_bw[0], q_bw[1], x_goal[0], x_goal[1], q_goal[0], q_goal[1], rho_bw, rho_obstacle)
+        # J12s = J12_lambd(q_robot[0], x_robot[1], x_obstacle[0], x_obstacle[1], q_obstacle[0], q_obstacle[1], x_bw[0], x_bw[1],
+        #                  q_bw[0], q_bw[1], x_goal[0], x_goal[1], q_goal[0], q_goal[1], rho_bw, rho_obstacle)
+        # J21s = J21_lambd(q_robot[0], x_robot[1], x_obstacle[0], x_obstacle[1], q_obstacle[0], q_obstacle[1], x_bw[0], x_bw[1],
+        #                  q_bw[0], q_bw[1], x_goal[0], x_goal[1], q_goal[0], q_goal[1], rho_bw, rho_obstacle)
+        # J22s = J22_lambd(q_robot[0], x_robot[1], x_obstacle[0], x_obstacle[1], q_obstacle[0], q_obstacle[1], x_bw[0], x_bw[1],
+        #                  q_bw[0], q_bw[1], x_goal[0], x_goal[1], q_goal[0], q_goal[1], rho_bw, rho_obstacle)
+
+        qx_h = np.array([q_robot[0]+H, q_robot[1]])
+        qy_h = np.array([q_robot[0], q_robot[1]+H])
+        Fx = diffeomorphism(qx_h, x_bw, r_bw, x_obstacle, r_obstacle, q_obstacle, rho_bw, rho_obstacle, x_goal, q_goal, lam)
+        Fy = diffeomorphism(qy_h, x_bw, r_bw, x_obstacle, r_obstacle, q_obstacle, rho_bw, rho_obstacle, x_goal, q_goal, lam)
+        F = diffeomorphism(q_robot, x_bw, r_bw, x_obstacle, r_obstacle, q_obstacle, rho_bw, rho_obstacle, x_goal, q_goal, lam)
+        J11s = float((Fx[0]-F[0])/H)
+        J12s = float((Fy[0]-F[0])/H)
+        J21s = float((Fx[1]-F[1])/H)
+        J22s = float((Fy[1]-F[1])/H)
         
         jacobian = np.array([[J11s, J12s], [J21s, J22s]], dtype=float)
         inv_jacobian = np.linalg.inv(jacobian)
