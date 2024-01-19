@@ -74,7 +74,7 @@ def main():
     IS_SHOWING_2DVISUALIZATION = True
     MAX_ANGULAR_VEL = 2.84
     MAX_LINEAR_VEL = 0.5
-    H = 10 ** -6
+    H = 10e-6
 
     field_x = (-2.5, 2.5)
     field_y = (-2.5, 2.5)
@@ -143,7 +143,7 @@ def main():
             sim_visualizer = sim_mobile_robot( 'omnidirectional', 1)
             sim_visualizer.set_field( field_x, field_y ) # set plot area
             sim_visualizer.show_goal(x_goal)
-            sim_visualizer.ax.add_patch(plt.Circle(([x_obstacle[0], x_obstacle[1]]), rho_obstacle_t0))
+            sim_visualizer.ax.add_patch(plt.Circle(([x_obstacle[0], x_obstacle[1]]), rho_obstacle_t0 - 0.2))
 
             # Ball world sim
             sim_visualizer_bw = sim_mobile_robot( 'omnidirectional', 2)
