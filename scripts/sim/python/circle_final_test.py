@@ -143,7 +143,17 @@ def main():
             sim_visualizer = sim_mobile_robot( 'omnidirectional', 1)
             sim_visualizer.set_field( field_x, field_y ) # set plot area
             sim_visualizer.show_goal(x_goal)
-            sim_visualizer.ax.add_patch(plt.Circle(([x_obstacle[0], x_obstacle[1]]), rho_obstacle_t0 - 0.2))
+            # sim_visualizer.ax.add_patch(plt.Circle(([x_obstacle[0], x_obstacle[1]]), rho_obstacle_t0 - 0.2))
+            x = np.linspace(-10, 10, 1000)
+            y = np.linspace(-10, 10, 1000)
+
+            X, Y = np.meshgrid(x, y)
+            a = 1.0
+            b = 1.1
+
+            XY = ((X - x_obstacle[0] - a) ** 2 + ((Y - x_obstacle[1]) ** 2)) * (((X - x_obstacle[0] + a) ** 2) + ((Y - x_obstacle[1]) ** 2)) - (b ** 4)
+
+            sim_visualizer.ax.contour(X, Y, XY, levels=[0])
 
             # Ball world sim
             sim_visualizer_bw = sim_mobile_robot( 'omnidirectional', 2)
