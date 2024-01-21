@@ -1,67 +1,34 @@
 from sympy import *
 import math
 from star_shape import star_shape
-import numpy as np
+#import numpy as np
 from bean_shape import bean_shape
 
 init_printing(use_unicode=True)
 
-x, y, xc, yc, r, m, b, h = symbols('x y xc yc r m b h')
 
-def calcuate_r(robot_position, obstacle_position):
+def calculate_r(robot_position, obstacle_position):
+    x, y, xc, yc, r, m, b, h = symbols('x y xc yc r m b h')
 
-    x_robot_pos = robot_position[0]
-    y_robot_pos = robot_position[1]
+    a = 1
+    b = 1.1
+    
+    # we can assume the shape to be at (0,0) for simplicity
+    x_ci1 = 0
+    y_ci1 = 0
+    theta = math.atan2(robot_position[1]-obstacle_position[1], robot_position[0]-obstacle_position[0])
 
-    xc = obstacle_position[0]
-    yc = obstacle_position[1]
-    # Calculate angle
-    x_dif = x_robot_pos - xc
-    y_dif = y_robot_pos - yc
+    x_expr = r*cos(theta)
+    y_expr = r*sin(theta)
 
-    m = y_dif/x_dif
-    b = y_robot_pos - (m*x_robot_pos)
+    bean = ((x_expr-x_ci1-a)**2 + (y_expr-y_ci1)**2) * ((x_expr-x_ci1+a)**2 + (y_expr-y_ci1)**2) - b**4
+    #bean = 0.5**2 - ((x_expr-obstacle_position[0])**2 + (y_expr-obstacle_position[1])**2)
+    #bean = bean.subs({theta: theta_val})
+    solutions = solve(bean,r)
+    for sol in solutions:
+        if sol.is_real and sol > 0:
+            r = sol
 
-    #star_shape_func, points =  star_shape(xc,yc,4,1)
-    star_shape_func = bean_shape(xc,yc)
-    star_shape_func =  solve(star_shape_func,y)
-
-    intersection_points = []
-
-    # shape can have multiple solutions. Need to go through them
-    for solution in star_shape_func:
-        h_function = Eq(solution,h)
-
-        line_equation = Eq(y, m*x + b)
-
-        # Substitute y from the line equation into the h function
-        intersection_equation = h_function.subs(h, m*x + b)
-        # Solve for x to find the x-coordinates of intersection points
-        x_values = solve(intersection_equation, x)
-        #print('x_values: ' ,x_values)
-
-        # Substitute x values back into the line equation to find y-coordinates
-        for x_val in x_values:
-            if x_val.is_real:
-                intersection_points.append([x_val, line_equation.subs(x, x_val).rhs])
-
-    intersection_points = np.array(intersection_points, dtype=np.float32)
-    #print("Intersection points:", intersection_points)
-
-    # Solve for closest intersection point and calculate r
-    robot_pos = np.array([x_robot_pos, y_robot_pos])
-    obstacle_pos = np.array([xc, yc])
-
-    shortest_dist = np.inf
-    for point in intersection_points:
-        dist = np.linalg.norm(point-robot_pos)
-        if (dist < shortest_dist):
-            shortest_dist = dist
-
-    r = np.linalg.norm(obstacle_pos-robot_pos) - shortest_dist 
-
-    #print(r)
-
-    return r   
+    return r, theta
 
 
