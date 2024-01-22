@@ -103,7 +103,7 @@ def main():
     Kp = 1
     K_gtg = 1
     Kappa = 1
-    gamma = 1
+    gamma = 0.1
     lam = 1000
     q_obstacle_t0 = np.array([0.5, 0.5])
     t = 0.0
@@ -118,8 +118,8 @@ def main():
     theta_for_r_calculation = calculateTheta(x_robot, x_obstacle)
     r_obstacle, th = calculate_r(x_robot, x_obstacle)
     print(f'r_obstacle: {r_obstacle}')
-    rho_obstacle = 1.0
-    rho_obstacle_t0 = 1.0
+    rho_obstacle = 0.8
+    rho_obstacle_t0 = 0.8
     rho_bw_t0 = 5.0
     r_bw = 5.0
     rho_bw = 5.0
@@ -188,12 +188,7 @@ def main():
 
     k = 0
     while t < t_max:
-        theta_for_r_calculation = calculateTheta(x_robot, x_obstacle)
-        theta_for_r_calculation = round(theta_for_r_calculation)
-        print(f'Theta: {theta_for_r_calculation}')
-        closest_theta = min(r_table, key=lambda x: abs(x-theta_for_r_calculation))
-        r_obstacle = r_table[closest_theta]
-        print(f'Estimated r: {r_obstacle}')
+        
         #r_obstacle, th = calculate_r(x_robot, x_obstacle)
 
         #print(f'r_obstacle, theta: {r_obstacle, np.degrees(theta)}')
@@ -329,6 +324,14 @@ def main():
         control_input_bw = np.array([q_dot[0], q_dot[1]])
 
         x_robot = x_robot + Ts*control_input
+
+        theta_for_r_calculation = calculateTheta(x_robot, x_obstacle)
+        theta_for_r_calculation = round(theta_for_r_calculation)
+        print(f'Theta: {theta_for_r_calculation}')
+        #closest_theta = min(r_table, key=lambda x: abs(x-theta_for_r_calculation))
+        r_obstacle = r_table[theta_for_r_calculation]
+        print(f'Estimated r: {r_obstacle}')
+
         F = diffeomorphism(x_robot, x_bw, r_bw, x_obstacle, r_obstacle, q_obstacle, rho_bw, rho_obstacle, x_goal, q_goal, lam)
         q_robot[0] = F[0]
         q_robot[1] = F[1]
