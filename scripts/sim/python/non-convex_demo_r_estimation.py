@@ -13,6 +13,7 @@ import json
 
 def calculateTheta(x_robot, x_obstacle):
     theta = atan2(x_robot[1] - x_obstacle[1], x_robot[0] - x_obstacle[0])
+    theta = theta * 180/pi
     if theta > 180:
         dt = theta - 180
         theta = 180 - dt
@@ -88,6 +89,10 @@ def main():
     MAX_ANGULAR_VEL = 2.84
     MAX_LINEAR_VEL = 0.5
     H = 10e-6
+    
+    with open('r_table.json', 'r') as file:
+        r_table = json.load(file)
+    r_table = {float(key): float(value) for key, value in r_table.items()}
 
     field_x = (-5, 5)
     field_y = (-5, 5)
@@ -108,13 +113,13 @@ def main():
     q_obstacle = np.array([0.5, 0.5])
     x_bw = np.array([0.0, 0.0])
     q_bw = np.array([0.0, 0.0])
-    x_robot = np.array([1.5, 1.5])
+    x_robot = np.array([0.5, 1.5])
     q_robot = np.array([1.5, 1.5])
     theta_for_r_calculation = calculateTheta(x_robot, x_obstacle)
     r_obstacle, th = calculate_r(x_robot, x_obstacle)
     print(f'r_obstacle: {r_obstacle}')
-    rho_obstacle = 1.5
-    rho_obstacle_t0 = 1.5
+    rho_obstacle = 1.0
+    rho_obstacle_t0 = 1.0
     rho_bw_t0 = 5.0
     r_bw = 5.0
     rho_bw = 5.0
@@ -184,14 +189,20 @@ def main():
     k = 0
     while t < t_max:
         theta_for_r_calculation = calculateTheta(x_robot, x_obstacle)
-        r_obstacle, th = calculate_r(x_robot, x_obstacle)
+        theta_for_r_calculation = round(theta_for_r_calculation)
+        print(f'Theta: {theta_for_r_calculation}')
+        closest_theta = min(r_table, key=lambda x: abs(x-theta_for_r_calculation))
+        r_obstacle = r_table[closest_theta]
+        print(f'Estimated r: {r_obstacle}')
+        #r_obstacle, th = calculate_r(x_robot, x_obstacle)
+
         #print(f'r_obstacle, theta: {r_obstacle, np.degrees(theta)}')
         #x_obstacle_edge[0] = x_obstacle[0] + r_obstacle*np.cos(theta)
         #x_obstacle_edge[1] = x_obstacle[1] + r_obstacle*np.sin(theta)
         #print(f'x_obstacle_edge: {x_obstacle_edge}')
 
         # 3 
-        print('kierros', k)
+        print('Round', k)
 
         ux = K_gtg * (x_goal[0] - x_robot[0])
         uy = K_gtg * (x_goal[1] - x_robot[1])
@@ -269,9 +280,9 @@ def main():
         q_obstacle[0] += u_star_q_obstacle_x*Ts
         q_obstacle[1] += u_star_q_obstacle_y*Ts
 
-        print(q_obstacle)
+        print(f'q obstacle: {q_obstacle}')
         rho_obstacle += u_star_rho_obstacle*Ts  
-        print(rho_obstacle)
+        print(f'rho obstacle: {rho_obstacle}')
         rho_bw += u_star_rho_bw*Ts
         t += Ts
 
